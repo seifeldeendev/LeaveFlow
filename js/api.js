@@ -78,6 +78,24 @@ window.LF = window.LF || {};
   const round = (n) => Math.round(n * 100) / 100;
   const policyVal = (name) => db.policy.find((p) => p.name === name).value;
 
+  function team(managerId) { return db.users.filter((u) => u.managerId === managerId || u.id === managerId); }
+  function coverage(req) {
+    const emp = user(req.employeeId); const mgrId = emp.managerId;
+    const members = team(mgrId).filter((u) => u.dept === emp.dept);
+    const size = members.length || 1;
+    const { days } = workingDays(req.start, req.end);
+    let worst = { date: null, off: 0, pct: 0, names: [] };
+    const perDay = days.map((d) => {
+      const off = db.requests.filter((r) => r.status === "Approved" && r.id !== req.id && members.some((m) => m.id === r.employeeId) && r.start <= d && r.end >= d);
+      const n = off.length + 1; const pct = Math.round((n / size) * 100);
+      const row = { date: d, off: n, pct, names: off.map((r) => user(r.employeeId).name) };
+      if (pct > worst.pct) worst = row;
+      return row;
+    });
+    const level = worst.pct > 30 ? "block" : worst.pct > 20 ? "warn" : "ok";
+    return { teamSize: size, perDay, worst, level };
+  }
+
   function policyChecks(u, body, ignoreId) {
     const checks = []; const add = (ok, label, detail) => checks.push({ ok, label, detail });
     const { type, start, end } = body;
@@ -186,6 +204,65 @@ window.LF = window.LF || {};
       auditLog(u.name, "REQUEST_" + r.status.toUpperCase(), r.id, "OK", "requests");
       save(); return enrich(r);
     },
+
+    // approvals-api
+    "GET /approvals"(b, q, u) {
+      need(isMgr(u) || isHR(u), 403, "FORBIDDEN", "Only managers and HR have an approval queue.");
+      return db.tasks.filter((t) => t.approverId === u.id && t.status === "Pending").map((t) => {
+        const r = db.requests.find((x) => x.id === t.requestId);
+        const ageH = Math.round((Date.parse(cfg.MOCK_TODAY + "T12:00:00Z") - Date.parse(t.createdAt)) / 3600000);
+        return Object.assign({}, t, { request: enrich(r), balance: balanceOf(r.employeeId), coverage: coverage(r), ageHours: ageH, needsHR: t.step === "Manager" && (r.type === "Unpaid" || r.workingDays > 5) });
+      }).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    },
+    "POST /approvals/:id/decision"(b, q, u, p) {
+      need(isMgr(u) || isHR(u), 403, "FORBIDDEN", "Not allowed.");
+      const t = db.tasks.find((x) => x.id === p.id);
+      if (!t || t.approverId !== u.id) fail(403, "FORBIDDEN", "This task isn't assigned to you.");
+      const r = db.requests.find((x) => x.id === t.requestId);
+      // Say what actually happened: withdrawn/cancelled by the employee is not the same as "already decided".
+      if (r.status !== "Pending") fail(409, "NOT_PENDING", user(r.employeeId).name.split(" ")[0] + "'s request is now " + r.status.toLowerCase() + ", so there's nothing to decide.");
+      need(t.status === "Pending", 409, "ALREADY_DECIDED", "This step was already decided.");
+      need(r.employeeId !== u.id, 403, "FORBIDDEN", "You can't decide your own request.");
+      need(b.decision === "Approved" || b.decision === "Rejected", 400, "BAD_DECISION", "Choose approve or reject.");
+      if (b.decision === "Rejected") need(String(b.comment || "").trim().length > 0, 400, "COMMENT_REQUIRED", "Add a comment so the employee knows why.");
+      const h = db.history[r.id] || (db.history[r.id] = []);
+      const emp = user(r.employeeId);
+      if (b.decision === "Approved") {
+        const cov = coverage(r);
+        if (cov.level === "block" && t.step === "Manager") fail(409, "COVERAGE_BLOCKED", "Approving would put " + cov.worst.pct + "% of the team off on " + fmtShort(cov.worst.date) + ". The limit is 30%.", cov);
+      }
+      t.status = "Done";
+      db.decisions.unshift({ taskId: t.id, requestId: r.id, approverId: u.id, decision: b.decision, at: nowIso(), comment: b.comment || "", employee: emp.name, type: r.type, start: r.start, end: r.end, days: r.workingDays });
+      h.push({ at: nowIso(), status: b.decision, by: u.name, note: b.comment || "" });
+      const needsHR = b.decision === "Approved" && t.step === "Manager" && (r.type === "Unpaid" || r.workingDays > 5);
+      if (needsHR) {
+        db.tasks.push({ id: "T-" + (5600 + db.tasks.length), requestId: r.id, approverId: "u-mona", step: "HR", createdAt: nowIso(), status: "Pending", note: r.type === "Unpaid" ? "Unpaid leave needs HR as a second step" : "Over 5 working days needs HR as a second step" });
+        h.push({ at: nowIso(), status: "Pending", by: "Approval workflow", note: "Waiting for Mona Fathy (HR)" });
+        notify("u-mona", "HR step waiting", emp.name + " · " + r.type + ", " + r.workingDays + " days.", "pages/approvals/queue.html");
+      } else {
+        r.status = b.decision; if (b.comment) r.decisionComment = b.comment;
+        if (b.decision === "Approved" && (r.type === "Annual" || r.type === "Casual")) {
+          db.ledger.push({ id: "E-" + (3000 + db.ledger.length), employeeId: r.employeeId, at: nowIso(), kind: "Deduction", type: r.type, amount: -r.workingDays, ref: r.id, note: "Approved request" });
+          h.push({ at: nowIso(), status: "Balance deducted", by: "Balance service", note: "−" + r.workingDays.toFixed(2) + " days " + r.type });
+        }
+        notify(r.employeeId, "Request " + b.decision.toLowerCase(), u.name + " " + b.decision.toLowerCase() + " " + r.id + " (" + fmtShort(r.start) + "–" + fmtShort(r.end) + ").", "pages/requests/request.html?id=" + r.id);
+      }
+      auditLog(u.name, "REQUEST_" + b.decision.toUpperCase(), r.id, "OK", "approvals");
+      save(); return { ok: true, needsHR };
+    },
+    "GET /approvals/history"(b, q, u) {
+      need(isMgr(u) || isHR(u), 403, "FORBIDDEN", "Only managers and HR have a decision history.");
+      return db.decisions.filter((d) => d.approverId === u.id);
+    },
+    "GET /team-calendar"(b, q, u) {
+      need(isMgr(u) || isHR(u), 403, "FORBIDDEN", "Only managers and HR can see the team calendar.");
+      const members = isHR(u) ? db.users : team(u.id).filter((m) => m.dept === u.dept);
+      return { members: members.map((m) => ({ id: m.id, name: m.name, dept: m.dept })), requests: db.requests.filter((r) => (r.status === "Approved" || r.status === "Pending") && members.some((m) => m.id === r.employeeId)).map(enrich), holidays: db.holidays };
+    },
+    "GET /notifications"(b, q, u) { return db.notifications.filter((n) => n.userId === u.id); },
+    "PATCH /notifications/:id"(b, q, u, p) { const n = db.notifications.find((x) => x.id === p.id && x.userId === u.id); if (!n) fail(404, "NOT_FOUND", "Not found."); n.read = true; save(); return n; },
+    "PATCH /notifications"(b, q, u) { db.notifications.filter((x) => x.userId === u.id).forEach((n) => (n.read = true)); save(); return { ok: true }; },
+    "DELETE /notifications/:id"(b, q, u, p) { const i = db.notifications.findIndex((x) => x.id === p.id && x.userId === u.id); if (i < 0) fail(404, "NOT_FOUND", "Not found."); db.notifications.splice(i, 1); save(); return { ok: true }; },
 
     // balances-api
     "GET /balances/me"(b, q, u) { return balanceOf(u.id); },

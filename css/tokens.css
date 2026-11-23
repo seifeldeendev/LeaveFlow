@@ -1,0 +1,134 @@
+/* LeaveFlow design tokens (deep teal + bright green), forced dark mode.
+   Font: Figtree stands in for the proprietary Euclid Circular A; Source Code Pro for code. */
+:root {
+  color-scheme: dark; /* native date pickers, scrollbars and file inputs render dark too */
+
+  /* Brand & accent */
+  --brand-green: #00ed64;
+  --brand-green-dark: #3fe98a;      /* readable green for links/labels on dark surfaces */
+  --brand-green-mid: #00a35c;
+  --brand-green-soft: rgba(0, 237, 100, 0.12);
+  --brand-teal-deep: #001e2b;
+  --brand-teal: #023430;
+  --brand-teal-mid: #0c3c4a;
+  --primary-pressed: #00c454;
+  --on-primary: #001e2b;
+
+  /* Category accents (tags only) */
+  --accent-purple: #a78bfa;
+  --accent-orange: #fb923c;
+  --accent-pink: #f472b6;
+  --accent-blue: #60a5fa;
+
+  /* Surface (dark) */
+  --bg: #00131c;
+  --canvas: #04222f;
+  --canvas-dark: #00111a;
+  --surface: #072a38;
+  --surface-soft: #0b3343;
+  --surface-feature: rgba(0, 237, 100, 0.07);
+  --hairline: rgba(255, 255, 255, 0.09);
+  --hairline-soft: rgba(255, 255, 255, 0.05);
+  --hairline-strong: rgba(255, 255, 255, 0.22);
+  --hairline-dark: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --ink: #e9f3f1;
+  --charcoal: #d4e1de;
+  --slate: #b3c4c1;
+  --steel: #8ea4a9;
+  --stone: #8399a0;       /* >= 4.5:1 on cards for small text */
+  --muted: #4c656b;
+  --on-dark: #ffffff;
+  --on-dark-muted: rgba(255, 255, 255, 0.68);
+
+  /* Semantic */
+  --semantic-warning-bg: rgba(254, 188, 46, 0.12);
+  --semantic-warning-text: #ffcb5c;
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.12);
+  --danger-text: #ffb3b3;
+
+  /* Overlays on page/card surfaces (hover, tab track, selected tab) */
+  --overlay-1: rgba(255, 255, 255, 0.04);
+  --overlay-2: rgba(255, 255, 255, 0.06);
+  --overlay-3: rgba(255, 255, 255, 0.09);
+  /* Shimmer */
+  --sk-base: rgba(255, 255, 255, 0.07);
+  --sk-shine: rgba(150, 255, 205, 0.20);
+  --sk-text-shine: #eafff4;
+  --rt-base: rgba(255, 255, 255, 0.16);
+  --rt-shine: rgba(190, 255, 225, 0.75);
+
+  /* Legacy aliases */
+  --primary: var(--brand-green);
+  --canvas-soft: var(--surface-soft);
+  --body: var(--steel);
+  --mute: var(--stone);
+  --divider-on-dark: var(--hairline-dark);
+
+  /* Type */
+  --font: "Figtree", "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Source Code Pro", "SF Mono", Menlo, Consolas, monospace;
+
+  /* Spacing (4px base) */
+  --s-xxs: 4px;
+  --s-xs: 6px;
+  --s-sm: 8px;
+  --s-md: 12px;
+  --s-lg: 16px;
+  --s-xl: 20px;
+  --s-2xl: 24px;
+  --s-3xl: 32px;
+  --s-4xl: 48px;
+  --s-5xl: 64px;
+  --s-section-lg: 96px;
+  --s-hero: 120px;
+
+  /* Radius */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-xxl: 24px;
+  --r-card: 12px;
+  --r-full: 9999px;
+
+  /* Elevation (deeper shadows read on dark) */
+  --e-1: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --e-2: 0 8px 20px -4px rgba(0, 0, 0, 0.45);
+  --e-3: 0 16px 32px -6px rgba(0, 0, 0, 0.55);
+  --e-4: 0 24px 60px -10px rgba(0, 0, 0, 0.7);
+  --e-glow: 0 0 0 4px rgba(0, 237, 100, 0.22), 0 0 24px rgba(0, 237, 100, 0.25);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast: 150ms;
+  --t-med: 200ms;
+  --t-slow: 420ms;
+
+  --container: 1280px;
+  --nav-h: 64px;
+}
+
+/* Light theme (app pages, chosen from the account menu). Header bands, dark cards, modals and the
+   nav bar keep their deep teal; only the page and card surfaces turn light. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --brand-green-dark: #00684a;
+  --brand-green-soft: #e3fcf7;
+  --surface-feature: #effdf6;
+  --accent-purple: #6d28d9; --accent-orange: #c2410c; --accent-pink: #be185d; --accent-blue: #1d4ed8;
+  --bg: #f5f8f7; --canvas: #ffffff; --surface: #f9fbfa; --surface-soft: #eef3f1;
+  --hairline: rgba(0, 30, 43, 0.10); --hairline-soft: rgba(0, 30, 43, 0.06); --hairline-strong: rgba(0, 30, 43, 0.24);
+  --ink: #001e2b; --charcoal: #1c2d38; --slate: #3d4f58; --steel: #55666e; --stone: #5f7178; --muted: #9aa8ab;
+  --semantic-warning-bg: #fef7db; --semantic-warning-text: #8a4a00;
+  --danger: #c62828; --danger-soft: #ffeaea; --danger-text: #8f1d1d;
+  --overlay-1: rgba(0, 30, 43, 0.035); --overlay-2: rgba(0, 30, 43, 0.06); --overlay-3: rgba(0, 30, 43, 0.09);
+  --sk-base: rgba(0, 30, 43, 0.07); --sk-shine: rgba(0, 163, 92, 0.16); --sk-text-shine: #00a35c;
+  --rt-base: rgba(0, 30, 43, 0.22); --rt-shine: rgba(0, 163, 92, 0.85);
+  --e-1: 0 1px 2px 0 rgba(0, 30, 43, 0.06); --e-2: 0 4px 12px 0 rgba(0, 30, 43, 0.10);
+  --e-3: 0 12px 24px -4px rgba(0, 30, 43, 0.14); --e-4: 0 16px 48px -8px rgba(0, 30, 43, 0.20);
+}

@@ -50,6 +50,16 @@ window.LF = window.LF || {};
 
   /* ---------- domain logic (mirrors the services) ---------- */
   const holidaySet = () => new Set(db.holidays.map((h) => h.date));
+  function workingDays(start, end) {
+    const hs = holidaySet(); const days = []; const skipped = [];
+    D.range(start, end).forEach((d) => {
+      const w = D.dow(d);
+      if (w === 5 || w === 6) skipped.push({ date: d, why: "Weekend" });
+      else if (hs.has(d)) skipped.push({ date: d, why: db.holidays.find((h) => h.date === d).name });
+      else days.push(d);
+    });
+    return { days, skipped };
+  }
   function balanceOf(uid) {
     const snap = db.balances[uid] || { Annual: 0, Casual: 0 };
     const out = { Annual: snap.Annual, Casual: snap.Casual };
@@ -68,6 +78,31 @@ window.LF = window.LF || {};
   const round = (n) => Math.round(n * 100) / 100;
   const policyVal = (name) => db.policy.find((p) => p.name === name).value;
 
+  function policyChecks(u, body, ignoreId) {
+    const checks = []; const add = (ok, label, detail) => checks.push({ ok, label, detail });
+    const { type, start, end } = body;
+    if (!start || !end || end < start) { add(false, "Valid dates", "End date must be on or after the start date"); return { checks, days: 0, skipped: [] }; }
+    const { days, skipped } = workingDays(start, end);
+    add(days.length > 0, "At least one working day", days.length ? days.length + " working day" + (days.length === 1 ? "" : "s") + " (Fri, Sat and public holidays not counted)" : "Range has only weekends or holidays");
+    const notice = type === "Annual" ? policyVal("annual-notice-days") : type === "Unpaid" ? 14 : 0;
+    const lead = D.diff(D.today(), start);
+    if (type === "Sick") add(lead >= -7, "Sick leave filed within 7 days", lead >= -7 ? "OK" : "Sick leave must be filed within 7 days of the first day");
+    else add(lead >= notice, "Notice period (" + notice + " day" + (notice === 1 ? "" : "s") + ")", lead >= notice ? "Submitted " + lead + " days ahead" : "Starts in " + Math.max(lead, 0) + " days; " + type + " leave needs " + notice + " days' notice");
+    const max = policyVal("max-consecutive-days");
+    add(days.length <= max, "Max " + max + " consecutive working days", days.length <= max ? "OK" : days.length + " days is over the limit");
+    const bo = db.blackouts.find((b) => b.dept === u.dept && start <= b.end && end >= b.start);
+    add(!bo, "No blackout dates", bo ? bo.name + " (" + fmtShort(bo.start) + "–" + fmtShort(bo.end) + ") blocks " + u.dept : "OK");
+    const ov = db.requests.find((r) => r.employeeId === u.id && r.id !== ignoreId && (r.status === "Pending" || r.status === "Approved") && start <= r.end && end >= r.start);
+    add(!ov, "No overlap with your requests", ov ? "Overlaps " + ov.id + " (" + ov.status.toLowerCase() + ")" : "OK");
+    if (type === "Annual" || type === "Casual") {
+      const b = balanceOf(u.id)[type];
+      add(b.projected >= days.length, "Enough " + type + " balance", "Projected " + b.projected + " days after pending requests, needs " + days.length);
+    }
+    const info = [];
+    if (type === "Sick" && days.length > 2) info.push("Sick leave over 2 days needs a medical certificate before it can be approved.");
+    if (type === "Unpaid" || days.length > 5) info.push("Over 5 working days or Unpaid: HR approves as a second step after your manager.");
+    return { checks, days: days.length, skipped, info };
+  }
   function fmtShort(s) { const d = D.parse(s); return d.getUTCDate() + " " + d.toLocaleString("en-GB", { month: "short", timeZone: "UTC" }); }
 
   const nowIso = () => (cfg.MOCK ? cfg.MOCK_TODAY + "T" + new Date().toISOString().slice(11, 19) + "Z" : new Date().toISOString());
@@ -92,6 +127,66 @@ window.LF = window.LF || {};
     },
     "POST /auth/logout"() { LF.session.clear(); return { ok: true }; },
     "GET /me"() { const u = me(); return u; },
+    "GET /leave-requests"(b, q, u) {
+      let list = db.requests.filter((r) => r.employeeId === u.id);
+      if (q.status) list = list.filter((r) => r.status === q.status);
+      if (q.type) list = list.filter((r) => r.type === q.type);
+      if (q.from) list = list.filter((r) => r.end >= q.from);
+      if (q.to) list = list.filter((r) => r.start <= q.to);
+      return list.sort((a, b) => b.start.localeCompare(a.start)).map(enrich);
+    },
+    "GET /leave-requests/:id"(b, q, u, p) {
+      const r = db.requests.find((x) => x.id === p.id);
+      const owner = r && r.employeeId === u.id;
+      const theirMgr = r && user(r.employeeId).managerId === u.id;
+      if (!r || !(owner || theirMgr || isHR(u))) fail(404, "NOT_FOUND", "Request not found.");
+      const steps = [];
+      const t = db.tasks.filter((x) => x.requestId === r.id);
+      const dec = db.decisions.filter((x) => x.requestId === r.id);
+      dec.forEach((d) => steps.push({ step: user(d.approverId).role === "HRAdmin" ? "HR" : "Manager", who: user(d.approverId).name, status: d.decision, at: d.at, comment: d.comment }));
+      t.filter((x) => x.status === "Pending").forEach((x) => steps.push({ step: x.step, who: user(x.approverId).name, status: x.escalated ? "Escalated" : "Pending", at: x.createdAt }));
+      return Object.assign(enrich(r), { history: db.history[r.id] || [{ at: r.createdAt, status: "Submitted", by: user(r.employeeId).name, note: r.workingDays + " working days" }], steps, canAct: owner });
+    },
+    "GET /working-days"(b, q, u) { return policyChecks(u, q); },
+    "POST /leave-requests"(b, q, u) {
+      need(["Annual", "Sick", "Casual", "Unpaid"].includes(b.type), 400, "BAD_TYPE", "Choose a leave type.");
+      const res = policyChecks(u, b);
+      const failed = res.checks.filter((c) => !c.ok);
+      if (failed.length) fail(422, "POLICY_VIOLATION", "This request breaks " + failed.length + " policy rule" + (failed.length > 1 ? "s" : "") + ".", res);
+      const id = "LR-" + (db.seq++);
+      const r = { id, employeeId: u.id, type: b.type, start: b.start, end: b.end, workingDays: res.days, status: "Pending", createdAt: nowIso(), reason: String(b.reason || "").slice(0, 500) };
+      db.requests.push(r);
+      const approver = user(u.managerId) || user("u-mona");
+      db.history[id] = [
+        { at: r.createdAt, status: "Submitted", by: u.name, note: "Passed policy checks · " + res.days + " working days" },
+        { at: r.createdAt, status: "Pending", by: "Approval workflow", note: "Waiting for " + approver.name + " (" + (approver.role === "HRAdmin" ? "HR" : "manager") + ")" }
+      ];
+      db.tasks.push({ id: "T-" + (5600 + db.tasks.length), requestId: id, approverId: approver.id, step: approver.role === "HRAdmin" ? "HR" : "Manager", createdAt: r.createdAt, status: "Pending" });
+      notify(approver.id, "New request to review", u.name + " · " + b.type + ", " + fmtShort(b.start) + "–" + fmtShort(b.end) + " (" + res.days + " days).", "pages/approvals/queue.html");
+      notify(u.id, "Request submitted", id + " is waiting for " + approver.name + ".", "pages/requests/request.html?id=" + id);
+      auditLog(u.name, "REQUEST_SUBMITTED", id, "OK", "requests");
+      save(); return enrich(r);
+    },
+    "PATCH /leave-requests/:id/status"(b, q, u, p) {
+      const r = db.requests.find((x) => x.id === p.id);
+      if (!r || r.employeeId !== u.id) fail(404, "NOT_FOUND", "Request not found.");
+      const h = db.history[r.id] || (db.history[r.id] = []);
+      if (b.action === "withdraw") {
+        need(r.status === "Pending", 409, "BAD_TRANSITION", "Only pending requests can be withdrawn.");
+        r.status = "Withdrawn"; h.push({ at: nowIso(), status: "Withdrawn", by: u.name, note: "" });
+        db.tasks.filter((t) => t.requestId === r.id && t.status === "Pending").forEach((t) => (t.status = "Closed"));
+      } else if (b.action === "cancel") {
+        need(r.status === "Approved" && r.start > D.today(), 409, "BAD_TRANSITION", "Only approved requests that haven't started can be cancelled.");
+        r.status = "Cancelled"; h.push({ at: nowIso(), status: "Cancelled", by: u.name, note: b.reason || "" });
+        if (r.type === "Annual" || r.type === "Casual") {
+          db.ledger.push({ id: "E-" + (3000 + db.ledger.length), employeeId: u.id, at: nowIso(), kind: "Refund", type: r.type, amount: r.workingDays, ref: r.id, note: "Request cancelled" });
+          h.push({ at: nowIso(), status: "Balance refunded", by: "Balance service", note: "+" + r.workingDays.toFixed(2) + " days " + r.type });
+        }
+      } else fail(400, "BAD_ACTION", "Unknown action.");
+      auditLog(u.name, "REQUEST_" + r.status.toUpperCase(), r.id, "OK", "requests");
+      save(); return enrich(r);
+    },
+
     // balances-api
     "GET /balances/me"(b, q, u) { return balanceOf(u.id); },
     "GET /balances/me/ledger"(b, q, u) {

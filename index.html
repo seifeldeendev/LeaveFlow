@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' http://localhost:4566; base-uri 'self'; form-action 'self'">
+  <title>LeaveFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Source+Code+Pro:wght@400;600&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-root="./" data-page="landing">
+  <header class="float-nav bar">
+    <a class="fn-brand" href="index.html" aria-label="LeaveFlow home">
+      <span class="fn-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h4.6l6 7-6 7H4l6-7-6-7zm7.4 0H16l6 7-6 7h-4.6l6-7-6-7z"/></svg></span>
+      <span>LeaveFlow</span>
+    </a>
+    <nav class="fn-pill" aria-label="Site">
+      <a href="#top" aria-current="true">Home</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="fn-right">
+      <a class="fn-text" href="#preview">See it live</a>
+      <a class="fn-signin" href="login.html">Sign in</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="silk-hero" id="top">
+      <canvas id="silk" aria-hidden="true"></canvas>
+      <div class="silk-copy">
+        <span class="silk-badge"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"/></svg></i>Built for HR teams, managers and employees</span>
+        <h1 class="silk-title">Time off, <em>sorted</em>.<br>HR stays focused.</h1>
+        <p class="silk-sub">LeaveFlow helps HR manage leave requests, approvals and balances with clarity.</p>
+        <a class="silk-cta" href="login.html">Try the demo</a>
+      </div>
+    </section>
+
+    <section class="band preview-band" id="preview">
+      <div class="band-inner">
+        <div class="band-head reveal">
+          <p class="eyebrow">See it in action</p>
+          <h2 class="display-lg">A request goes in. The calendar and balance follow.</h2>
+        </div>
+        <div class="hero-showcase reveal reveal-d1" id="hero-art" aria-hidden="true"></div>
+      <div class="hero-meta">
+        <div class="reveal"><b data-count>21</b><span>days of Annual leave a year, added to every balance automatically</span></div>
+        <div class="reveal reveal-d1"><b><span data-count>48</span>h</b><span>before an unanswered request moves up to HR, so nothing gets stuck</span></div>
+        <div class="reveal reveal-d2"><b>0</b><span>spreadsheets to reconcile at the end of the year</span></div>
+      </div>
+      </div>
+    </section>
+
+    <section class="band" id="how">
+      <div class="band-inner">
+        <div class="band-head reveal">
+          <p class="eyebrow">How it works</p>
+          <h2 class="display-lg">From request to payroll-ready in four steps.</h2>
+          <p>Everyone follows the same simple path, and your leave policy is applied the same way every time.</p>
+        </div>
+        <ol class="steps">
+          <li class="step reveal"><span class="step-n">1</span><h3 class="display-xs">Employee asks</h3><p>They pick dates and see straight away how many working days it costs and what's left, with weekends and public holidays already skipped.</p></li>
+          <li class="step reveal reveal-d1"><span class="step-n">2</span><h3 class="display-xs">Manager decides</h3><p>One click to approve or reject, with a clear warning if too many people on the team would be away at once.</p></li>
+          <li class="step reveal reveal-d2"><span class="step-n">3</span><h3 class="display-xs">HR steps in when needed</h3><p>Long or unpaid leave comes to HR for a second look. Anything left waiting for 48 hours comes to HR too.</p></li>
+          <li class="step reveal reveal-d3"><span class="step-n">4</span><h3 class="display-xs">Balances update</h3><p>The days come off the balance the moment it's approved, and go back if the leave is cancelled. Nothing to type in twice.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="band soft" id="features">
+      <div class="band-inner">
+        <div class="band-head reveal">
+          <p class="eyebrow">What HR gets</p>
+          <h2 class="display-lg">The busywork, handled.</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature reveal"><span class="feature-ic" data-ic="calendar"></span><span class="tag green">Calendar</span><h3 class="display-xs">Who's off, at a glance</h3><p>A company calendar and team view show approved and pending leave side by side, so you can plan cover early.</p></article>
+          <article class="feature reveal reveal-d1"><span class="feature-ic" data-ic="refresh"></span><span class="tag purple">Balances</span><h3 class="display-xs">Accrual on autopilot</h3><p>1.75 days added on the 1st of every month, pro-rata for new joiners, and up to 5 days carried over into the new year.</p></article>
+          <article class="feature reveal reveal-d2"><span class="feature-ic" data-ic="settings"></span><span class="tag orange">Policy</span><h3 class="display-xs">Your rules, applied evenly</h3><p>Notice periods, blackout dates and team-coverage limits are checked before a request is sent. Change a rule once and it applies to everyone.</p></article>
+          <article class="feature reveal"><span class="feature-ic" data-ic="file"></span><span class="tag blue">Sick leave</span><h3 class="display-xs">Certificates in one place</h3><p>Employees attach medical certificates to their request. Only they, their manager and HR can open them.</p></article>
+          <article class="feature reveal reveal-d1"><span class="feature-ic" data-ic="chart"></span><span class="tag green">Reports</span><h3 class="display-xs">Absence dashboard</h3><p>Days taken by month and department, who's off this week and who's running low. Every balance exports to a spreadsheet for payroll.</p></article>
+          <article class="feature reveal reveal-d2"><span class="feature-ic" data-ic="shield"></span><span class="tag purple">Records</span><h3 class="display-xs">A full history</h3><p>Every approval, correction and policy change is recorded with who did it and when, ready for any audit or dispute.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band ink" id="roles">
+      <div class="band-inner">
+        <div class="band-head reveal">
+          <p class="eyebrow">For your whole team</p>
+          <h2 class="display-lg">Everyone sees what they need. Nothing more.</h2>
+        </div>
+        <div class="role-grid">
+          <div class="role-card reveal">
+            <h3 class="display-xs">Employees</h3>
+            <ul><li>Request leave in under a minute</li><li>Know exactly how many days are left</li><li>Follow every request from start to finish</li></ul>
+          </div>
+          <div class="role-card reveal reveal-d1">
+            <h3 class="display-xs">Managers</h3>
+            <ul><li>One list of requests waiting for you</li><li>See team cover before you approve</li><li>A team calendar for the weeks ahead</li></ul>
+          </div>
+          <div class="role-card featured reveal reveal-d2">
+            <span class="badge-role">Built for HR</span>
+            <h3 class="display-xs">HR</h3>
+            <ul><li>Company-wide absence at a glance</li><li>Correct a balance with a recorded reason</li><li>Set the leave policy for everyone</li></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="faq">
+      <div class="band-inner faq-wrap">
+        <div class="band-head reveal">
+          <p class="eyebrow">Questions</p>
+          <h2 class="display-lg">Good to know.</h2>
+        </div>
+        <div class="faq reveal reveal-d1">
+          <details><summary>Does it know about public holidays and our weekend?</summary><p>Yes. Fridays, Saturdays and Egyptian public holidays are never counted as leave days, so employees and HR always see the same number.</p></details>
+          <details><summary>What happens if a manager doesn't respond?</summary><p>After 48 hours the request moves to HR automatically. The employee can see it marked as escalated on their request page.</p></details>
+          <details><summary>Can HR fix a balance that's wrong?</summary><p>Yes. HR adds a correction with a reason. The original entries are kept, so you can always see how a balance was reached.</p></details>
+          <details><summary>Is employee information kept private?</summary><p>Each person only sees what their role allows. Managers and HR confirm their sign-in with a code from their phone, and everyone is signed out after 15 minutes of inactivity.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="band soft" id="security">
+      <div class="band-inner">
+        <div class="cta-banner reveal">
+          <p class="eyebrow">Ready when you are</p>
+          <h2 class="display-lg">Spend less time chasing leave.</h2>
+          <p class="body-lg max-760 mt-24">Sign in as an employee, a manager or HR and see the whole journey, from a request to an updated balance.</p>
+          <div class="btn-row mt-32"><a class="btn" href="login.html">Try the demo</a><a class="btn btn-on-dark" href="#features">See the features</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-cols">
+      <div class="stack-lg">
+        <a class="logo" href="index.html" aria-label="LeaveFlow home">
+          <span class="logo-orb"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#001e2b" d="M4 5h4.6l6 7-6 7H4l6-7-6-7zm7.4 0H16l6 7-6 7h-4.6l6-7-6-7z"/></svg></span>
+          <span class="logo-word">LeaveFlow</span>
+        </a>
+        <p class="caption footer-note">Leave requests, approvals and balances for growing teams. A course project by Team 15.</p>
+      </div>
+      <div><h5>Product</h5><a href="#how">How it works</a><a href="#features">Features</a><a href="#faq">FAQ</a></div>
+      <div><h5>For</h5><a href="#roles">Employees</a><a href="#roles">Managers</a><a href="#roles">HR</a></div>
+      <div><h5>Account</h5><a href="login.html">Sign in</a><a href="login.html">Try the demo</a></div>
+    </div>
+    <div class="footer-base"><span>© 2026 LeaveFlow · Team 15</span><span>Demo with sample data</span></div>
+  </footer>
+  <script src="js/config.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/pages/landing.js" defer></script>
+  <script src="js/pages/silk.js" defer></script>
+</body>
+</html>

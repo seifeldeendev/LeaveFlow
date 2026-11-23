@@ -1,0 +1,13 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python (tools/make-pages.py)
+__pycache__/
+
+# Local secrets: never commit
+.env
+.env.*
+*.zip

@@ -4,7 +4,13 @@
   const { h, icon } = LF;
   const reason = LF.q("reason");
   const next = LF.q("next");
-  const demo = [
+  const liveAuth = LF.live("requests");
+  // Live mode signs in with the real Cognito test users (password typed by hand, never stored here).
+  const demo = liveAuth ? [
+    { email: "mona.employee@leaveflow.test", name: "Mona", role: "Employee", dept: "Sales" },
+    { email: "sara.manager@leaveflow.test", name: "Sara", role: "Manager", dept: "Sales" },
+    { email: "hana.hr@leaveflow.test", name: "Hana", role: "HR Admin", dept: "HR" }
+  ] : [
     { email: "nour@leaveflow.test", name: "Nour Hassan", role: "Employee", dept: "Sales" },
     { email: "karim@leaveflow.test", name: "Karim Adel", role: "Manager", dept: "Sales" },
     { email: "mona@leaveflow.test", name: "Mona Fathy", role: "HR Admin", dept: "HR" }
@@ -15,7 +21,7 @@
   const pass = h("input", { class: "input", id: "password", type: "password", autocomplete: "current-password", placeholder: "Your password", required: true });
   const submit = h("button", { class: "btn", type: "submit", text: "Sign in" });
   const picks = demo.map((d) => h("button", { type: "button", class: "demo-user", "aria-pressed": "false", onclick: (e) => {
-    email.value = d.email; pass.value = "demo-password";
+    email.value = d.email; if (liveAuth) { pass.value = ""; pass.focus(); } else pass.value = "demo-password";
     picks.forEach((p) => p.setAttribute("aria-pressed", String(p === e.currentTarget)));
   } }, h("span", { class: "avatar ink", text: LF.fmt.initials(d.name) }), h("span", null, h("b", { text: d.name }), h("div", { class: "cell-sub", text: d.dept })), h("span", { class: "chip", text: d.role })));
 
@@ -35,7 +41,7 @@
     LF.busy(submit, true);
     try {
       const res = await LF.api.post("/auth/login", { email: email.value, password: pass.value });
-      if (res.mfaRequired) showMfa(); else go();
+      if (res.mfaSetupRequired) showMfaSetup(); else if (res.mfaRequired) showMfa(); else go();
     } catch (err) { errBox.append(LF.errorBox(err)); }
     finally { LF.busy(submit, false); }
   }
@@ -57,9 +63,40 @@
       h("div", { class: "stack" }, h("p", { class: "eyebrow text-red", text: "Step 2 of 2" }), h("h1", { class: "display-md", text: "Enter your code" }),
         h("p", { class: "body-md muted m0", text: "Managers and HR confirm sign-in with the 6-digit code from their authenticator app." })),
       err, h("div", { class: "otp" }, boxes), btn,
-      h("p", { class: "caption muted", text: "Demo: any 6 digits work." }),
+      liveAuth ? null : h("p", { class: "caption muted", text: "Demo: any 6 digits work." }),
       h("button", { type: "button", class: "btn btn-outline-dark", text: "Back", onclick: () => { LF.session.clear(); main.replaceChildren(form); } }));
     main.replaceChildren(mfa); boxes[0].focus();
+  }
+
+  // First sign-in of a Manager or HR user: link an authenticator app before any token is handed out.
+  async function showMfaSetup() {
+    const err = h("div", { "aria-live": "assertive" });
+    const code = h("input", { class: "input", id: "setup-code", inputmode: "numeric", maxlength: "6", autocomplete: "one-time-code", placeholder: "6-digit code" });
+    const btn = h("button", { class: "btn", type: "submit", text: "Turn on MFA" });
+    const secretBox = h("div", { class: "stack" }, LF.loading("Creating your key…", 1));
+    const card = h("form", { class: "auth-card", novalidate: true, onsubmit: async (e) => {
+      e.preventDefault(); err.replaceChildren();
+      if (!/^\d{6}$/.test(code.value)) { err.append(LF.errorBox({ message: "Enter the 6 digits from your authenticator app." })); return; }
+      LF.busy(btn, true);
+      try {
+        await LF.api.post("/auth/mfa/verify", { code: code.value });
+        LF.session.clear(); main.replaceChildren(form);
+        errBox.replaceChildren(h("div", { class: "notice" }, icon("shield"), h("span", { text: "MFA is on. Sign in again and enter a code from your app." })));
+      } catch (x) { err.append(LF.errorBox(x)); LF.busy(btn, false); }
+    } },
+      h("div", { class: "stack" }, h("p", { class: "eyebrow text-red", text: "Set up MFA" }), h("h1", { class: "display-md", text: "Protect your account" }),
+        h("p", { class: "body-md muted m0", text: "Managers and HR must use an authenticator app. Add this key in Google Authenticator or Microsoft Authenticator (\"enter a setup key\", time-based), then type the code it shows." })),
+      secretBox, err,
+      h("div", { class: "field" }, h("label", { for: "setup-code", text: "Code from the app" }), code), btn,
+      h("button", { type: "button", class: "btn btn-outline-dark", text: "Back", onclick: () => { LF.session.clear(); main.replaceChildren(form); } }));
+    main.replaceChildren(card);
+    try {
+      const r = await LF.api.post("/auth/mfa/setup", {});
+      secretBox.replaceChildren(h("span", { class: "label", text: "Setup key" }),
+        h("code", { class: "num", text: r.secretCode.replace(/(.{4})/g, "$1 ").trim() }),
+        h("span", { class: "hint", text: "Account: " + (email.value || "your work email") + " · Issuer: LeaveFlow" }));
+      code.focus();
+    } catch (x) { secretBox.replaceChildren(LF.errorBox(x)); }
   }
 
   function go() { location.href = next && /^pages\/[a-z-]+(\/[a-z-]+)?\.html$/.test(next) ? LF.url(next) : LF.url("pages/home.html"); }

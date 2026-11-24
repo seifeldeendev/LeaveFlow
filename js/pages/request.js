@@ -35,7 +35,25 @@
 
     const cert = r.type === "Sick" ? h("div", { class: "card stack" }, h("h3", { class: "display-xs", text: "Medical certificate" }),
       r.workingDays > 2 ? h("p", { class: "muted m0", text: "Needed before this can be approved." }) : h("p", { class: "muted m0", text: "Optional for 2 days or fewer." }),
-      h("div", { class: "btn-row" }, h("button", { class: "btn btn-sm btn-outline-dark", onclick: () => LF.toast("Uploading certificates is switched off in this demo.", "info") }, icon("upload"), "Upload"), h("button", { class: "btn btn-sm btn-outline-dark", onclick: () => LF.toast("Opening certificates is switched off in this demo.", "info") }, icon("file"), "View"))) : null;
+      certButtons()) : null;
+
+    // Live mode: private S3 upload / 5-minute view link through requests-api. Mock mode keeps the demo toast.
+    function certButtons() {
+      const picker = h("input", { type: "file", accept: ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png", hidden: true, onchange: async (e) => {
+        const f = e.target.files[0]; if (!f) return;
+        if (!/\.(pdf|jpe?g|png)$/i.test(f.name) || f.size > 5 * 1024 * 1024) { LF.toast("Only PDF, JPG or PNG files up to 5 MB.", "info"); return; }
+        try { await LF.api.uploadCertificate(r.id, f); LF.toast("Certificate uploaded."); setTimeout(() => location.reload(), 600); }
+        catch (x) { LF.toast(x.message, "info"); }
+      } });
+      const canUpload = r.canAct && r.status === "Pending";
+      return h("div", { class: "btn-row" }, picker,
+        canUpload ? h("button", { class: "btn btn-sm btn-outline-dark", onclick: () => (LF.live("requests") ? picker.click() : LF.toast("Uploading certificates is switched off in this demo.", "info")) }, icon("upload"), r.hasCertificate ? "Replace" : "Upload") : null,
+        h("button", { class: "btn btn-sm btn-outline-dark", onclick: async () => {
+          if (!LF.live("requests")) { LF.toast("Opening certificates is switched off in this demo.", "info"); return; }
+          try { const l = await LF.api.certificateLink(r.id); window.open(l.url, "_blank", "noopener"); }
+          catch (x) { LF.toast(x.message, "info"); }
+        } }, icon("file"), "View"));
+    }
 
     const timeline = h("div", { class: "card" }, h("div", { class: "card-head" }, h("h3", { class: "display-xs", text: "History" }), h("span", { class: "caption muted", text: "Every change, in order" })),
       h("ol", { class: "timeline" }, r.history.map((ev, i) => h("li", { class: i === r.history.length - 1 ? "now" : "done" },

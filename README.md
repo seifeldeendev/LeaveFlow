@@ -24,7 +24,20 @@ Sign in with a demo account on the sign-in page (any password; any 6 digits for 
 - `pages/requests/` Sohaila (SohailaTaher) · `pages/approvals/` and notifications Ammar (3enany) · `pages/balance/` Seif (seifeldeendev), each page's logic in `js/pages/<name>.js`
 - `tools/make-pages.py` regenerates the thin HTML wrappers
 
-## Going live
+## Going live, one service at a time
+Each backend lives in `services/<name>/` with its own deploy script. In `js/config.js`, `LIVE: { requests: true }`
+sends sign-in and the leave request pages to the real requests-api while the other parts stay on mock data
+(they act as the demo user with the same role). Live sign-in uses the Cognito test users, e.g. `mona.employee@leaveflow.test`
+(Employee), `sara.manager@leaveflow.test` (Manager, MFA), `hana.hr@leaveflow.test` (HR, MFA). Managers and HR link an
+authenticator app on their first sign-in.
+
+| Service | Folder | Owner | API |
+|---|---|---|---|
+| Leave Request & Policy Engine | `services/leave-request-service` | Sohaila | requests-api |
+| Approval Workflow | `services/approval-service` | Ammar | approvals-api |
+| Balance & Accrual | `services/balance-service` | Seif | balances-api |
+
+## Going live (all services)
 Set `MOCK: false` in `js/config.js` and fill the three API Gateway URLs. `js/api.js` then sends the Cognito ID token as
 `Authorization: Bearer`. The login page still needs wiring to the real `/auth/login` response (store `idToken` in the session).
 

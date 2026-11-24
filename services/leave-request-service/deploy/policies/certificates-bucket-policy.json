@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "DenyUnencryptedUploads", "Effect": "Deny", "Principal": "*",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::leaveflow-certificates/*",
+      "Condition": { "StringNotEquals": { "s3:x-amz-server-side-encryption": "aws:kms" } } },
+    { "Sid": "DenyEveryoneExceptRequestsFn", "Effect": "Deny", "Principal": "*",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::leaveflow-certificates/*",
+      "Condition": { "StringNotLike": { "aws:PrincipalArn": ["arn:aws:iam::__ACCOUNT__:role/requests-fn-role", "arn:aws:iam::__ACCOUNT__:root"] } } }
+  ]
+}

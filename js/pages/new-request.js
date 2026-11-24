@@ -45,7 +45,8 @@
       const my = ++seq;
       if (preview.childElementCount > 1) LF.refreshing(preview, true); else preview.replaceChildren(h("p", { class: "caption-upper", text: "Preview" }), LF.loading("Counting working days…", 3));
       try {
-        const [res, bal] = await Promise.all([LF.api.get("/working-days?" + new URLSearchParams({ start: state.start, end: state.end, type: state.type })), LF.api.get("/balances/me")]);
+        // The balance panel is optional: the preview still works if the Balance service is down.
+        const [res, bal] = await Promise.all([LF.api.get("/working-days?" + new URLSearchParams({ start: state.start, end: state.end, type: state.type })), LF.api.get("/balances/me").catch(() => ({}))]);
         if (my !== seq) return;
         LF.refreshing(preview, false);
         renderPreview(res, bal);
@@ -73,9 +74,14 @@
       e.preventDefault(); err.replaceChildren(); LF.busy(submit, true);
       try {
         const r = await LF.api.post("/leave-requests", { type: state.type, start: state.start, end: state.end, reason: state.reason });
+        const f = state.type === "Sick" && file.files[0];
+        if (f) {
+          try { await LF.api.uploadCertificate(r.id, f); }
+          catch (x) { LF.toast("Request saved, but the certificate upload failed. Add it from the request page.", "info"); }
+        }
         location.href = LF.url("pages/requests/request.html?id=" + r.id + "&new=1");
       } catch (x) {
-        err.append(LF.errorBox(x)); if (x.details) renderPreview(x.details, await LF.api.get("/balances/me"));
+        err.append(LF.errorBox(x)); if (x.details && x.details.checks) renderPreview(x.details, await LF.api.get("/balances/me").catch(() => ({})));
         LF.busy(submit, false);
       }
     }

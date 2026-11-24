@@ -6,6 +6,10 @@
 window.LF = window.LF || {};
 (function () {
   const cfg = LF.config;
+  // A service is live (real API) when MOCK is off, or when LIVE turns it on by itself.
+  const live = (svc) => cfg.MOCK === false || Boolean(cfg.LIVE && cfg.LIVE[svc]);
+  const anyLive = () => cfg.MOCK === false || Object.values(cfg.LIVE || {}).some(Boolean);
+  LF.live = live;
   const STORE_KEY = "lf.mockdb.v1";
   const SESSION_KEY = "lf.session";
 
@@ -16,7 +20,7 @@ window.LF = window.LF || {};
     add(s, n) { const d = D.parse(s); d.setUTCDate(d.getUTCDate() + n); return D.iso(d); },
     diff(a, b) { return Math.round((D.parse(b) - D.parse(a)) / 86400000); },
     dow(s) { return D.parse(s).getUTCDay(); }, // 0 Sun … 5 Fri, 6 Sat
-    today() { return cfg.MOCK ? cfg.MOCK_TODAY : D.iso(new Date()); },
+    today() { return cfg.MOCK && !anyLive() ? cfg.MOCK_TODAY : D.iso(new Date()); },
     range(a, b) { const out = []; for (let d = a; d <= b; d = D.add(d, 1)) out.push(d); return out; }
   };
   LF.date = D;
@@ -36,7 +40,18 @@ window.LF = window.LF || {};
     set(s) { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {} },
     clear() { try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {} }
   };
-  const me = () => { const s = LF.session.get(); return s && s.mfaDone ? user(s.userId) : null; };
+  // Live sign-in keeps the Cognito profile in the session; mock sign-in keeps a mock user id.
+  const me = () => {
+    const s = LF.session.get();
+    if (!s || !s.mfaDone) return null;
+    return live("requests") ? s.user || null : user(s.userId);
+  };
+  // For the services still on mock data, act as the demo user with the same email or role.
+  const mockMe = () => {
+    const u = me();
+    if (!u || !live("requests")) return u;
+    return db.users.find((x) => x.email === u.email) || db.users.find((x) => x.role === u.role) || u;
+  };
   const user = (id) => db.users.find((u) => u.id === id);
   const isHR = (u) => u && u.role === "HRAdmin";
   const isMgr = (u) => u && u.role === "Manager";
@@ -367,7 +382,7 @@ window.LF = window.LF || {};
     const q = Object.fromEntries(new URLSearchParams(qs || ""));
     const m = match(method, path);
     if (!m) fail(404, "NOT_FOUND", "No route " + method + " " + path);
-    const u = me();
+    const u = mockMe();
     if (!PUBLIC.includes(method + " " + path)) need(u, 401, "UNAUTHORIZED", "Your session ended. Sign in again.");
     try { return JSON.parse(JSON.stringify(m.fn(body || {}, q, u, m.params))); }
     catch (e) {
@@ -382,21 +397,77 @@ window.LF = window.LF || {};
     if (/^\/(balances|calendar|dashboard|audit|accrual-runs|policy|users)/.test(path)) return "balances";
     return "requests";
   }
-  async function realCall(method, url, body) {
-    const s = LF.session.get();
+  async function http(method, url, body, token) {
     const res = await fetch(cfg.APIS[serviceFor(url)] + url, {
-      method, headers: Object.assign({ "Content-Type": "application/json" }, s && s.idToken ? { Authorization: "Bearer " + s.idToken } : {}),
+      method, headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
       body: body ? JSON.stringify(body) : undefined
     });
-    const data = await res.json().catch(() => ({}));
+    const data = res.status === 204 ? {} : await res.json().catch(() => ({}));
     if (!res.ok) { const e = data.error || {}; throw new ApiError(res.status, e.code || "ERROR", e.message || "Something went wrong.", e.details); }
     return data;
   }
+  // Live session: Cognito tokens from requests-api. The ID token lasts 15 minutes; refresh it once on a 401.
+  function startSession(r) {
+    LF.session.set({ idToken: r.idToken, accessToken: r.accessToken, refreshToken: r.refreshToken, user: r.user, userId: r.user.id, mfaDone: true, at: Date.now() });
+  }
+  async function refreshTokens() {
+    const s = LF.session.get();
+    if (!s || !s.refreshToken) return false;
+    try {
+      const r = await http("POST", "/auth/refresh", { refreshToken: s.refreshToken });
+      LF.session.set(Object.assign(s, { idToken: r.idToken, accessToken: r.accessToken, user: r.user || s.user }));
+      return true;
+    } catch (e) { return false; }
+  }
+  async function realCall(method, url, body) {
+    const path = url.split("?")[0];
+    const s = LF.session.get() || {};
+    if (path === "/auth/login") {
+      const r = await http("POST", url, body);
+      if (r.mfaRequired) { LF.session.set({ pending: { email: body.email, session: r.session } }); return { mfaRequired: true }; }
+      if (r.mfaSetupRequired) { LF.session.set({ setup: { email: body.email, accessToken: r.accessToken } }); return { mfaSetupRequired: true }; }
+      startSession(r); return { mfaRequired: false, role: r.role };
+    }
+    if (path === "/auth/mfa") {
+      const p = s.pending || {};
+      if (!p.session) throw new ApiError(401, "NO_SESSION", "Start again from sign-in.");
+      const r = await http("POST", url, { email: p.email, session: p.session, code: body.code });
+      startSession(r); return { ok: true };
+    }
+    if (path === "/auth/mfa/setup" || path === "/auth/mfa/verify") {
+      if (!s.setup) throw new ApiError(401, "NO_SESSION", "Start again from sign-in.");
+      return http("POST", url, Object.assign({}, body, { accessToken: s.setup.accessToken }));
+    }
+    if (path === "/auth/logout") {
+      if (s.accessToken) await http("POST", url, { accessToken: s.accessToken }).catch(() => null); // revokes refresh tokens in Cognito
+      LF.session.clear(); return { ok: true };
+    }
+    try { return await http(method, url, body, s.idToken); }
+    catch (e) {
+      if (e.status === 401 && await refreshTokens()) return http(method, url, body, LF.session.get().idToken);
+      throw e;
+    }
+  }
 
-  const call = (method, url, body) => (cfg.MOCK ? mockCall(method, url, body) : realCall(method, url, body));
+  const call = (method, url, body) => (live(serviceFor(url.split("?")[0])) ? realCall(method, url, body) : mockCall(method, url, body));
   LF.api = {
     get: (u) => call("GET", u), post: (u, b) => call("POST", u, b), patch: (u, b) => call("PATCH", u, b),
     put: (u, b) => call("PUT", u, b), del: (u) => call("DELETE", u),
+    // Medical certificate: ask requests-api for a 5-minute S3 upload form, then send the file straight to S3.
+    async uploadCertificate(requestId, file) {
+      if (!live("requests")) return { ok: true, mock: true };
+      const link = await call("POST", "/leave-requests/" + encodeURIComponent(requestId) + "/certificate", { contentType: file.type });
+      const form = new FormData();
+      Object.entries(link.fields).forEach(([k, v]) => form.append(k, v));
+      form.append("file", file);
+      const res = await fetch(link.url, { method: "POST", body: form });
+      if (!res.ok) throw new ApiError(res.status, "UPLOAD_FAILED", "The file was refused. Use a PDF, JPG or PNG up to 5 MB.");
+      return { ok: true };
+    },
+    async certificateLink(requestId) {
+      if (!live("requests")) throw new ApiError(404, "NOT_FOUND", "Certificates need the live requests API.");
+      return call("GET", "/leave-requests/" + encodeURIComponent(requestId) + "/certificate");
+    },
     me: () => me(), userName: (id) => (user(id) || {}).name
   };
 })();

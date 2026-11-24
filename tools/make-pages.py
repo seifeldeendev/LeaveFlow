@@ -4,7 +4,7 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
        "font-src https://fonts.gstatic.com; img-src 'self' data: blob:; "
-       "connect-src 'self' http://localhost:4566; base-uri 'self'; form-action 'self'")
+       "connect-src 'self' http://localhost:4566 http://*.localhost.floci.io:4566; base-uri 'self'; form-action 'self'")
 PAGES = [
   ("login.html", "Sign in", "login"),
   ("pages/home.html", "Overview", "home"),

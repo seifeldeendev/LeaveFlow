@@ -1,0 +1,39 @@
+import express from 'express';
+import { cfg } from './lib/config.js';
+import { errorHandler, notFound, HttpError } from './lib/errors.js';
+import approvalRoutes from './routes/approvals.js';
+import notificationRoutes from './routes/notifications.js';
+import calendarRoutes from './routes/calendar.js';
+
+const app = express();
+app.disable('x-powered-by');
+
+// CORS: only our frontend may call this API from a browser.
+app.use((req, res, next) => {
+  res.set('Access-Control-Allow-Origin', cfg.corsOrigin);
+  res.set('Vary', 'Origin');
+  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.set('X-Content-Type-Options', 'nosniff');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
+
+// Bodies must be JSON and small.
+app.use((req, _res, next) => {
+  if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.headers['content-length'] && req.headers['content-length'] !== '0' && !req.is('application/json')) {
+    return next(new HttpError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Send JSON with Content-Type: application/json'));
+  }
+  next();
+});
+app.use(express.json({ limit: '10kb' }));
+
+app.get('/health', (_req, res) => res.json({ status: 'ok', service: cfg.service }));
+app.use('/approvals', approvalRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/team-calendar', calendarRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
+
+export default app;

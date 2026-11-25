@@ -1,0 +1,8 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "CallApprovalsFunctionOnly", "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:approvals-fn" }
+  ]
+}

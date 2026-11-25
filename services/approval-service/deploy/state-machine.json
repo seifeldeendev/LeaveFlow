@@ -1,0 +1,17 @@
+{
+  "Comment": "LeaveFlow escalation timer: wait 48 hours (2 minutes in demo mode), then ask approvals-fn to escalate the manager step if it is still pending.",
+  "StartAt": "WaitForManager",
+  "States": {
+    "WaitForManager": {
+      "Type": "Wait",
+      "SecondsPath": "$.waitSeconds",
+      "Next": "EscalateIfStillPending"
+    },
+    "EscalateIfStillPending": {
+      "Type": "Task",
+      "Resource": "__FUNCTION_ARN__",
+      "Retry": [{ "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2 }],
+      "End": true
+    }
+  }
+}

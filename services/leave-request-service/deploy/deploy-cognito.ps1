@@ -13,8 +13,10 @@ function Invoke-Aws {
 }
 
 # Existence check that stays quiet (the CLI prints 'not found' in red otherwise)
+# Windows PowerShell 5 turns stderr text into a fatal error under 'Stop', so relax it here only.
 function Test-Aws {
-    & aws --endpoint-url $Endpoint @args 2>$null | Out-Null
+    $ErrorActionPreference = 'Continue'
+    & aws --endpoint-url $Endpoint @args 2>&1 | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
 

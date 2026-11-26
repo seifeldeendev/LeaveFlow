@@ -162,7 +162,7 @@ $balancesInbox = "arn:aws:sqs:${Region}:${Account}:balances-inbox"
 $auditInbox    = "arn:aws:sqs:${Region}:${Account}:audit-inbox"
 $rules = @(
     @{ name = 'submitted-to-approvals'; pattern = @{ source = @('leaveflow.requests'); 'detail-type' = @('request.submitted') };
-       targets = @(@{ Id = 'approvals-fn'; Arn = $FnArn }) },
+       targets = @(@{ Id = 'approvals-fn'; Arn = $FnArn }, @{ Id = 'balances-inbox'; Arn = $balancesInbox }) },  # Balance service holds pending days
     @{ name = 'cancelled-to-approvals-and-balances'; pattern = @{ source = @('leaveflow.requests'); 'detail-type' = @('request.cancelled') };
        targets = @(@{ Id = 'approvals-fn'; Arn = $FnArn }, @{ Id = 'balances-inbox'; Arn = $balancesInbox }) },
     @{ name = 'decisions-to-requests-and-balances'; pattern = @{ source = @('leaveflow.approvals'); 'detail-type' = @('request.approved', 'request.rejected') };
@@ -246,10 +246,14 @@ $existing = (Invoke-AwsJson apigatewayv2 get-routes --api-id $ApiId).Items
 foreach ($rk in $public + $protected) {
     $isProtected = $protected -contains $rk
     $route = $existing | Where-Object RouteKey -eq $rk | Select-Object -First 1
-    $authArgs = if ($isProtected) { @('--authorization-type', 'JWT', '--authorizer-id', $AuthId) } else { @('--authorization-type', 'NONE') }
+    # On real AWS set LEAVEFLOW_GATEWAY_JWT=true: API Gateway then rejects bad tokens before the Lambda runs.
+    # Floci refuses to fetch keys from a 'localhost' issuer (SSRF guard), so on Floci the Lambda verifies
+    # the token itself (src/lib/auth.js: signature, issuer, audience, expiry, token_use).
+    $gatewayJwt = $env:LEAVEFLOW_GATEWAY_JWT -eq 'true'
+    $authArgs = if ($isProtected -and $gatewayJwt) { @('--authorization-type', 'JWT', '--authorizer-id', $AuthId) } else { @('--authorization-type', 'NONE') }
     if ($route) { Invoke-Aws apigatewayv2 update-route --api-id $ApiId --route-id $route.RouteId --target "integrations/$IntId" @authArgs | Out-Null }
     else { Invoke-Aws apigatewayv2 create-route --api-id $ApiId --route-key $rk --target "integrations/$IntId" @authArgs | Out-Null }
-    Write-Host ("  {0,-32} {1}" -f $rk, $(if ($isProtected) { 'JWT' } else { 'public' }))
+    Write-Host ("  {0,-32} {1}" -f $rk, $(if (-not $isProtected) { 'public' } elseif ($gatewayJwt) { 'JWT at gateway + Lambda' } else { 'JWT checked in Lambda' }))
 }
 
 $stages = (Invoke-AwsJson apigatewayv2 get-stages --api-id $ApiId).Items

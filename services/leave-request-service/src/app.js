@@ -1,4 +1,5 @@
 import express from 'express';
+import { lambdaBodyErrors } from './lib/lambda-body.js';
 import { cfg } from './lib/config.js';
 import { errorHandler, notFound, HttpError } from './lib/errors.js';
 import authRoutes, { meHandler } from './routes/auth.js';
@@ -27,6 +28,7 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(express.json({ limit: '10kb' }));
+app.use(lambdaBodyErrors); // body errors found at the Lambda entry (see lib/lambda-body.js)
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: cfg.service }));
 app.use('/auth', authRoutes);

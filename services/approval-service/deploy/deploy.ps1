@@ -7,7 +7,7 @@
 # Safe to run again: existing resources are reused and the Lambda code is updated.
 # Run:  powershell -ExecutionPolicy Bypass -File .\deploy\deploy.ps1
 #       add -DemoMode $false for the real 48-hour escalation (default: 2 minutes for the demo)
-#       add -GatewayJwt $true to make API Gateway check tokens too (real AWS). On Floci 2.5.0 the gateway's
+#       add -GatewayJwt $true (or set LEAVEFLOW_GATEWAY_JWT=true) to make API Gateway check tokens too (real AWS). On Floci 2.5.0 the gateway's
 #       JWT authorizer rejects valid Cognito tokens, so by default the Lambda verifies every token itself
 #       (signature against Cognito's keys, issuer, audience, token type) and answers 401 without a valid one.
 param([bool]$DemoMode = $true, [bool]$GatewayJwt = $false)
@@ -165,7 +165,7 @@ $balancesInbox = "arn:aws:sqs:${Region}:${Account}:balances-inbox"
 $auditInbox    = "arn:aws:sqs:${Region}:${Account}:audit-inbox"
 $rules = @(
     @{ name = 'submitted-to-approvals'; pattern = @{ source = @('leaveflow.requests'); 'detail-type' = @('request.submitted') };
-       targets = @(@{ Id = 'approvals-fn'; Arn = $FnArn }) },
+       targets = @(@{ Id = 'approvals-fn'; Arn = $FnArn }, @{ Id = 'balances-inbox'; Arn = $balancesInbox }) },  # Balance service holds pending days
     @{ name = 'cancelled-to-approvals-and-balances'; pattern = @{ source = @('leaveflow.requests'); 'detail-type' = @('request.cancelled') };
        targets = @(@{ Id = 'approvals-fn'; Arn = $FnArn }, @{ Id = 'balances-inbox'; Arn = $balancesInbox }) },
     @{ name = 'decisions-to-requests-and-balances'; pattern = @{ source = @('leaveflow.approvals'); 'detail-type' = @('request.approved', 'request.rejected') };
@@ -257,10 +257,14 @@ $existing = (Invoke-AwsJson apigatewayv2 get-routes --api-id $ApiId).Items
 foreach ($rk in $public + $protected) {
     $isProtected = $protected -contains $rk
     $route = $existing | Where-Object RouteKey -eq $rk | Select-Object -First 1
-    $authArgs = if ($isProtected -and $GatewayJwt) { @('--authorization-type', 'JWT', '--authorizer-id', $AuthId) } else { @('--authorization-type', 'NONE') }
+    # On real AWS use -GatewayJwt $true (or set LEAVEFLOW_GATEWAY_JWT=true): API Gateway then rejects bad tokens
+    # before the Lambda runs. Floci refuses to fetch keys from a 'localhost' issuer (SSRF guard), so on Floci
+    # the Lambda verifies the token itself (src/lib/auth.js: signature, issuer, audience, expiry, token_use).
+    $useGatewayJwt = $GatewayJwt -or ($env:LEAVEFLOW_GATEWAY_JWT -eq 'true')
+    $authArgs = if ($isProtected -and $useGatewayJwt) { @('--authorization-type', 'JWT', '--authorizer-id', $AuthId) } else { @('--authorization-type', 'NONE') }
     if ($route) { Invoke-Aws apigatewayv2 update-route --api-id $ApiId --route-id $route.RouteId --target "integrations/$IntId" @authArgs | Out-Null }
     else { Invoke-Aws apigatewayv2 create-route --api-id $ApiId --route-key $rk --target "integrations/$IntId" @authArgs | Out-Null }
-    Write-Host ("  {0,-32} {1}" -f $rk, $(if (-not $isProtected) { 'public' } elseif ($GatewayJwt) { 'JWT at API Gateway + Lambda' } else { 'JWT checked in Lambda' }))
+    Write-Host ("  {0,-32} {1}" -f $rk, $(if (-not $isProtected) { 'public' } elseif ($useGatewayJwt) { 'JWT at API Gateway + Lambda' } else { 'JWT checked in Lambda' }))
 }
 
 $stages = (Invoke-AwsJson apigatewayv2 get-stages --api-id $ApiId).Items

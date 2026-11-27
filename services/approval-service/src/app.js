@@ -1,4 +1,5 @@
 import express from 'express';
+import { lambdaBodyErrors } from './lib/lambda-body.js';
 import { cfg } from './lib/config.js';
 import { errorHandler, notFound, HttpError } from './lib/errors.js';
 import approvalRoutes from './routes/approvals.js';
@@ -27,8 +28,9 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(express.json({ limit: '10kb' }));
-// Behind API Gateway, serverless-http hands Express the body as raw bytes (a Buffer), so express.json()
-// skips it. Turn those bytes, or the raw API Gateway event body, into JSON here (same 10 KB limit).
+app.use(lambdaBodyErrors); // body errors found at the Lambda entry (see lib/lambda-body.js)
+// Backup for the Lambda-entry parser: if a body still reaches Express as raw bytes (a Buffer) or only in the
+// raw API Gateway event, turn it into JSON here (same 10 KB limit). Does nothing once req.body is parsed.
 app.use((req, _res, next) => {
   if (!['POST', 'PUT', 'PATCH'].includes(req.method)) return next();
   let text = null;

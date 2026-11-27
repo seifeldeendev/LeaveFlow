@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
   try { await escalateOverdue(); } catch (err) { log('error', 'ESCALATION_CHECK_FAILED', { message: err.message }); }
   const sql = await db();
   const rows = await sql.query(
-    `SELECT s.id, s.step, s.note, s.created_at, s.due_at, ${TASK_COLS},
+    `SELECT s.id, s.step, s.note, s.created_at, s.due_at, EXTRACT(EPOCH FROM (now() - s.created_at)) AS elapsed_sec, ${TASK_COLS},
             EXISTS (SELECT 1 FROM approval_steps e WHERE e.task_id = t.id AND e.status = 'Escalated') AS escalated
      FROM approval_steps s JOIN approval_tasks t ON t.id = s.task_id
      WHERE s.status = 'Pending' AND t.status = 'InProgress' AND t.employee_id <> $1
@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
   const out = [];
   for (const r of rows) {
     // The page counts down to escalation on a 48-hour scale; in demo mode 2 minutes stand for 48 hours.
-    const elapsedSec = (Date.now() - new Date(r.created_at).getTime()) / 1000;
+    const elapsedSec = Number(r.elapsed_sec); // measured by the database clock
     const ageHours = Math.round((elapsedSec / cfg.escalateAfterSeconds) * 48);
     out.push({
       id: r.id, requestId: r.request_id, step: r.step, status: 'Pending', createdAt: r.created_at,

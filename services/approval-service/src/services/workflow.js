@@ -49,12 +49,13 @@ export async function startWorkflow(d) {
   if (!task) return { duplicate: true };
 
   const what = `${d.employeeName || 'An employee'} · ${d.leaveType}, ${fmtRange(d.startDate, d.endDate)} (${plural(d.workingDays)}).`;
-  const dueAt = new Date(Date.now() + cfg.escalateAfterSeconds * 1000).toISOString();
+  // Due time comes from the database clock, not the Lambda's: a container clock that drifts
+  // (e.g. after the laptop sleeps) must never make a new request look overdue.
 
   if (d.managerId) {
     const [step] = await sql`
       INSERT INTO approval_steps (task_id, step_order, step, assigned_user_id, due_at, note)
-      VALUES (${task.id}, 1, 'Manager', ${d.managerId}, ${dueAt}, ${needsHr ? 'HR approves as a second step after you' : null})
+      VALUES (${task.id}, 1, 'Manager', ${d.managerId}, now() + (${cfg.escalateAfterSeconds}::int * interval '1 second'), ${needsHr ? 'HR approves as a second step after you' : null})
       RETURNING id`;
     await notify(d.managerId, 'New request to review', what, 'pages/approvals/queue.html');
     await startTimer(task.id, step.id);
@@ -71,14 +72,26 @@ export async function startWorkflow(d) {
 }
 
 // Manager step waited too long -> mark it Escalated and hand the request to HR.
-export async function escalateStep(stepId) {
+// ignoreDue is only for tests. Normally a step escalates only once its due time has passed by the
+// DATABASE clock, so an early timer (Floci's Wait state can wake up early) never escalates too soon;
+// it gets back the seconds still left, and the state machine waits again.
+export async function escalateStep(stepId, { ignoreDue = false } = {}) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(stepId))) return { escalated: false };
   const sql = await db();
   const [step] = await sql`
     UPDATE approval_steps s SET status = 'Escalated', escalated_at = now()
     FROM approval_tasks t
     WHERE s.id = ${stepId} AND s.task_id = t.id AND s.status = 'Pending' AND s.step = 'Manager' AND t.status = 'InProgress'
+      AND (${ignoreDue}::boolean OR s.due_at IS NULL OR s.due_at <= now())
     RETURNING s.task_id, t.request_id, t.employee_id, t.employee_name, t.leave_type, t.working_days`;
-  if (!step) return { escalated: false }; // already decided, cancelled or escalated
+  if (!step) {
+    // Not escalated: either it is already decided/closed, or it is not due yet.
+    const [left] = await sql`
+      SELECT GREATEST(1, CEIL(EXTRACT(EPOCH FROM (due_at - now()))))::int AS seconds
+      FROM approval_steps WHERE id = ${stepId} AND status = 'Pending' AND step = 'Manager' AND due_at > now()`;
+    if (left) log('info', 'ESCALATION_NOT_DUE_YET', { stepId, retryInSeconds: left.seconds });
+    return { escalated: false, retryInSeconds: left ? left.seconds : 0 };
+  }
   await sql`
     INSERT INTO approval_steps (task_id, step_order, step, assigned_group, note)
     VALUES (${step.task_id}, 2, 'HR', 'HRAdmin', 'Escalated: the manager did not decide in time')
@@ -87,7 +100,7 @@ export async function escalateStep(stepId) {
   await notify(await safeHrIds(), 'Escalated to HR', `${step.employee_name} · ${step.leave_type}, ${plural(step.working_days)}. The manager did not decide in time.`, 'pages/approvals/queue.html');
   await notify(step.employee_id, 'Request escalated', 'Your manager did not decide in time, so HR will decide your request.', `pages/requests/request.html?id=${step.request_id}`);
   await audit('approval-service', 'REQUEST_ESCALATED', step.request_id);
-  return { escalated: true };
+  return { escalated: true, retryInSeconds: 0 };
 }
 
 // Safety net: escalate every manager step that is past its due time.

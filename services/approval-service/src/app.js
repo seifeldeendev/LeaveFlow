@@ -29,6 +29,24 @@ app.use((req, _res, next) => {
 });
 app.use(express.json({ limit: '10kb' }));
 app.use(lambdaBodyErrors); // body errors found at the Lambda entry (see lib/lambda-body.js)
+// Backup for the Lambda-entry parser: if a body still reaches Express as raw bytes (a Buffer) or only in the
+// raw API Gateway event, turn it into JSON here (same 10 KB limit). Does nothing once req.body is parsed.
+app.use((req, _res, next) => {
+  if (!['POST', 'PUT', 'PATCH'].includes(req.method)) return next();
+  let text = null;
+  if (Buffer.isBuffer(req.body)) text = req.body.toString('utf8');
+  else if ((!req.body || Object.keys(req.body).length === 0) && req.lambdaEvent?.body) {
+    text = req.lambdaEvent.isBase64Encoded ? Buffer.from(req.lambdaEvent.body, 'base64').toString('utf8') : String(req.lambdaEvent.body);
+  }
+  if (text === null) return next();
+  if (text.length > 10 * 1024) return next(new HttpError(413, 'PAYLOAD_TOO_LARGE', 'Request body too large'));
+  try {
+    req.body = text.trim() ? JSON.parse(text) : {};
+    next();
+  } catch {
+    next(new HttpError(400, 'INVALID_JSON', 'Body is not valid JSON'));
+  }
+});
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: cfg.service }));
 app.use('/approvals', approvalRoutes);

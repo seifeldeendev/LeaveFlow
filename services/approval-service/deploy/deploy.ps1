@@ -7,7 +7,10 @@
 # Safe to run again: existing resources are reused and the Lambda code is updated.
 # Run:  powershell -ExecutionPolicy Bypass -File .\deploy\deploy.ps1
 #       add -DemoMode $false for the real 48-hour escalation (default: 2 minutes for the demo)
-param([bool]$DemoMode = $true)
+#       add -GatewayJwt $true (or set LEAVEFLOW_GATEWAY_JWT=true) to make API Gateway check tokens too (real AWS). On Floci 2.5.0 the gateway's
+#       JWT authorizer rejects valid Cognito tokens, so by default the Lambda verifies every token itself
+#       (signature against Cognito's keys, issuer, audience, token type) and answers 401 without a valid one.
+param([bool]$DemoMode = $true, [bool]$GatewayJwt = $false)
 
 $ErrorActionPreference = 'Stop'
 $Endpoint = if ($env:AWS_ENDPOINT_URL) { $env:AWS_ENDPOINT_URL } else { 'http://localhost:4566' }
@@ -241,19 +244,27 @@ $IntId = $int.IntegrationId
 
 # Public: health and CORS preflight only. Everything else: API Gateway rejects a missing or bad token with 401 before Lambda runs.
 $public = 'GET /health', 'OPTIONS /{proxy+}'
-$protected = 'ANY /approvals', 'ANY /approvals/{proxy+}', 'ANY /notifications', 'ANY /notifications/{proxy+}', 'GET /team-calendar'
+# Explicit methods (no catch-all ANY): Floci 2.5.0 drops request bodies on ANY routes.
+$protected = 'GET /approvals', 'GET /approvals/{proxy+}', 'POST /approvals/{proxy+}',
+             'GET /notifications', 'PATCH /notifications', 'PATCH /notifications/{proxy+}', 'DELETE /notifications/{proxy+}',
+             'GET /team-calendar'
+$existing = (Invoke-AwsJson apigatewayv2 get-routes --api-id $ApiId).Items
+# Remove routes from earlier deploys that are no longer in the list (e.g. the old ANY routes).
+foreach ($old in $existing | Where-Object { ($public + $protected) -notcontains $_.RouteKey }) {
+    if (Test-Aws apigatewayv2 delete-route --api-id $ApiId --route-id $old.RouteId) { Write-Host "  removed old route $($old.RouteKey)" }
+}
 $existing = (Invoke-AwsJson apigatewayv2 get-routes --api-id $ApiId).Items
 foreach ($rk in $public + $protected) {
     $isProtected = $protected -contains $rk
     $route = $existing | Where-Object RouteKey -eq $rk | Select-Object -First 1
-    # On real AWS set LEAVEFLOW_GATEWAY_JWT=true: API Gateway then rejects bad tokens before the Lambda runs.
-    # Floci refuses to fetch keys from a 'localhost' issuer (SSRF guard), so on Floci the Lambda verifies
-    # the token itself (src/lib/auth.js: signature, issuer, audience, expiry, token_use).
-    $gatewayJwt = $env:LEAVEFLOW_GATEWAY_JWT -eq 'true'
-    $authArgs = if ($isProtected -and $gatewayJwt) { @('--authorization-type', 'JWT', '--authorizer-id', $AuthId) } else { @('--authorization-type', 'NONE') }
+    # On real AWS use -GatewayJwt $true (or set LEAVEFLOW_GATEWAY_JWT=true): API Gateway then rejects bad tokens
+    # before the Lambda runs. Floci refuses to fetch keys from a 'localhost' issuer (SSRF guard), so on Floci
+    # the Lambda verifies the token itself (src/lib/auth.js: signature, issuer, audience, expiry, token_use).
+    $useGatewayJwt = $GatewayJwt -or ($env:LEAVEFLOW_GATEWAY_JWT -eq 'true')
+    $authArgs = if ($isProtected -and $useGatewayJwt) { @('--authorization-type', 'JWT', '--authorizer-id', $AuthId) } else { @('--authorization-type', 'NONE') }
     if ($route) { Invoke-Aws apigatewayv2 update-route --api-id $ApiId --route-id $route.RouteId --target "integrations/$IntId" @authArgs | Out-Null }
     else { Invoke-Aws apigatewayv2 create-route --api-id $ApiId --route-key $rk --target "integrations/$IntId" @authArgs | Out-Null }
-    Write-Host ("  {0,-32} {1}" -f $rk, $(if (-not $isProtected) { 'public' } elseif ($gatewayJwt) { 'JWT at gateway + Lambda' } else { 'JWT checked in Lambda' }))
+    Write-Host ("  {0,-32} {1}" -f $rk, $(if (-not $isProtected) { 'public' } elseif ($useGatewayJwt) { 'JWT at API Gateway + Lambda' } else { 'JWT checked in Lambda' }))
 }
 
 $stages = (Invoke-AwsJson apigatewayv2 get-stages --api-id $ApiId).Items
@@ -279,7 +290,7 @@ try {
     $h = Invoke-RestMethod "$ApiUrl/health" -TimeoutSec 90
     Write-Host "GET /health -> $($h.status)" -ForegroundColor Green
 } catch { Write-Warning "GET /health failed: $($_.Exception.Message)" }
-try { Invoke-RestMethod "$ApiUrl/approvals" -TimeoutSec 30 | Out-Null; Write-Warning 'No token was accepted - check the JWT authorizer' }
+try { Invoke-RestMethod "$ApiUrl/approvals" -TimeoutSec 60 | Out-Null; Write-Warning 'No token was accepted - check the token check' }
 catch {
     if ($_.Exception.Response) { Write-Host "GET /approvals without token -> $([int]$_.Exception.Response.StatusCode) (expected 401)" -ForegroundColor Green }
     else { Write-Warning "Could not reach the API: $($_.Exception.Message)" }

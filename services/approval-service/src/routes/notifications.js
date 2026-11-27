@@ -6,8 +6,8 @@ import { requireAuth } from '../lib/auth.js';
 
 const router = Router();
 router.use(requireAuth);
-const ID = /^\d{1,18}$/; // notification ids are numbers in the database
-const out = (n) => ({ id: String(n.id), title: n.title, body: n.body, link: n.link || 'pages/home.html', at: n.created_at, read: n.read });
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const out = (n) => ({ id: n.id, title: n.title, body: n.body, link: n.link || 'pages/home.html', at: n.created_at, read: n.read });
 
 router.get('/', async (req, res) => {
   const sql = await db();
@@ -23,7 +23,7 @@ router.patch('/', async (req, res) => {
 });
 
 router.patch('/:id', async (req, res) => {
-  if (!ID.test(req.params.id)) throw new HttpError(404, 'NOT_FOUND', 'Not found.');
+  if (!UUID.test(req.params.id)) throw new HttpError(404, 'NOT_FOUND', 'Not found.');
   const sql = await db();
   const [n] = await sql`UPDATE notifications SET read = true WHERE id = ${req.params.id} AND user_id = ${req.user.id} RETURNING *`;
   if (!n) throw new HttpError(404, 'NOT_FOUND', 'Not found.');
@@ -31,7 +31,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
-  if (!ID.test(req.params.id)) throw new HttpError(404, 'NOT_FOUND', 'Not found.');
+  if (!UUID.test(req.params.id)) throw new HttpError(404, 'NOT_FOUND', 'Not found.');
   const sql = await db();
   const [n] = await sql`DELETE FROM notifications WHERE id = ${req.params.id} AND user_id = ${req.user.id} RETURNING id`;
   if (!n) throw new HttpError(404, 'NOT_FOUND', 'Not found.');

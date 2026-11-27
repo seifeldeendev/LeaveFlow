@@ -105,8 +105,8 @@ if (task) {
   check('Mona decides her own task -> 403', (await call('POST', `/approvals/${task.id}/decision`, mona, { decision: 'Approved' })).status, 403);
   check('Reject without a comment -> 400', (await call('POST', `/approvals/${task.id}/decision`, sara, { decision: 'Rejected' })).status, 400);
   check('Unknown decision -> 400', (await call('POST', `/approvals/${task.id}/decision`, sara, { decision: 'Maybe' })).status, 400);
-  check('Comment over 300 characters -> 400', (await call('POST', `/approvals/${task.id}/decision`, sara, { decision: 'Approved', comment: 'x'.repeat(301) })).status, 400);
-  check('Task id that is not a number -> 404', (await call('POST', `/approvals/abc/decision`, sara, { decision: 'Approved' })).status, 404);
+  check('Comment over 500 characters -> 400', (await call('POST', `/approvals/${task.id}/decision`, sara, { decision: 'Approved', comment: 'x'.repeat(501) })).status, 400);
+  check('Task id that is not valid -> 404', (await call('POST', `/approvals/abc/decision`, sara, { decision: 'Approved' })).status, 404);
   const script = '<script>alert("xss")</script> Enjoy your leave';
   check('Sara approves (comment contains a script tag) -> 200', (await call('POST', `/approvals/${task.id}/decision`, sara, { decision: 'Approved', comment: script })).status, 200);
   check('Approve the same task twice -> 409', (await call('POST', `/approvals/${task.id}/decision`, sara, { decision: 'Approved' })).status, 409);
@@ -140,7 +140,7 @@ if (withEscalation) {
   // 1. The Step Functions execution itself finished (Wait state, then it called approvals-fn).
   const sfn = new SFNClient(aws);
   const smArn = readJson('../deploy/approvals-outputs.json').stateMachineArn;
-  const execArn = smArn.replace(':stateMachine:', ':execution:') + `:escalate-${req2}`;
+  const execArn = smArn.replace(':stateMachine:', ':execution:') + `:escalate-${t2?.id}`; // the timer is named after the step id
   let exec = null; try { exec = await sfn.send(new DescribeExecutionCommand({ executionArn: execArn })); } catch (e) { exec = { status: e.name }; }
   check('Step Functions escalation timer ran', exec.status, 'SUCCEEDED');
   // 2. HR now has it, marked as escalated (Hana has no authenticator yet, so Cognito signs her in directly).

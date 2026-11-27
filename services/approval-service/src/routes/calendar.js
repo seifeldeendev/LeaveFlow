@@ -16,7 +16,7 @@ router.get('/', requireAuth, requireRole('Manager', 'HRAdmin'), async (req, res)
     SELECT request_id, employee_id, employee_name, department, leave_type, status, working_days,
            start_date::text AS start_date, end_date::text AS end_date
     FROM approval_tasks
-    WHERE status IN ('Approved', 'Pending') AND employee_id = ANY(${ids})
+    WHERE status IN ('Approved', 'InProgress') AND employee_id = ANY(${ids})
       AND end_date >= current_date - 30` : [];
   res.json({
     members: members.map((m) => ({ id: m.id, name: m.name, dept: m.dept })),

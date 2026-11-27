@@ -1,5 +1,5 @@
 {
-  "Comment": "LeaveFlow escalation timer: wait 48 hours (2 minutes in demo mode), then ask approvals-fn to escalate the manager step if it is still pending.",
+  "Comment": "LeaveFlow escalation timer: wait 48 hours (2 minutes in demo mode), then ask approvals-fn to escalate the manager step. approvals-fn checks the due time with the database clock; if the timer woke up early it returns the seconds left and the machine waits again.",
   "StartAt": "WaitForManager",
   "States": {
     "WaitForManager": {
@@ -10,8 +10,41 @@
     "EscalateIfStillPending": {
       "Type": "Task",
       "Resource": "__FUNCTION_ARN__",
-      "Retry": [{ "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2 }],
-      "End": true
+      "ResultPath": "$.result",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DueYet"
+    },
+    "DueYet": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.result.retryInSeconds",
+          "NumericGreaterThan": 0,
+          "Next": "WaitForTheRest"
+        }
+      ],
+      "Default": "Done"
+    },
+    "WaitForTheRest": {
+      "Type": "Pass",
+      "Parameters": {
+        "action.$": "$.action",
+        "stepId.$": "$.stepId",
+        "waitSeconds.$": "$.result.retryInSeconds"
+      },
+      "Next": "WaitForManager"
+    },
+    "Done": {
+      "Type": "Succeed"
     }
   }
 }

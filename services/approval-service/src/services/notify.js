@@ -14,7 +14,7 @@ export async function notify(userIds, title, body, link) {
   const sql = await db();
   for (const userId of ids) {
     await sql`INSERT INTO notifications (user_id, title, body, link)
-              VALUES (${userId}, ${clip(title, 120)}, ${clip(body, 500)}, ${clip(link, 300) || null})`;
+              VALUES (${userId}, ${clip(title, 100)}, ${clip(body, 300)}, ${clip(link, 200) || null})`;
   }
   if (!cfg.topicArn) return;
   try {

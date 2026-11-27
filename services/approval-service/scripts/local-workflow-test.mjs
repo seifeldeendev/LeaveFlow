@@ -42,8 +42,8 @@ const event = {
 try {
   const r1 = await handleEvent(event);
   check('request.submitted processed', r1.ok === true);
-  const steps = await sql`SELECT id, step_no, step_type, approver_id, status FROM approval_steps WHERE request_id = ${requestId}`;
-  check('Manager step created for Sara, status Pending', steps.length === 1 && steps[0].step_type === 'Manager' && steps[0].approver_id === sara.id && steps[0].status === 'Pending');
+  const steps = await sql`SELECT s.id, s.step_order, s.step, s.assigned_user_id, s.status FROM approval_steps s JOIN approval_tasks t ON t.id = s.task_id WHERE t.request_id = ${requestId}`;
+  check('Manager step created for Sara, status Pending', steps.length === 1 && steps[0].step === 'Manager' && steps[0].assigned_user_id === sara.id && steps[0].status === 'Pending');
 
   const r2 = await handleEvent(event);
   check('Same event again is skipped (idempotent)', r2.duplicate === true);
@@ -58,23 +58,25 @@ try {
   const notes = await sql`SELECT count(*)::int AS n FROM notifications WHERE user_id = ${sara.id} AND created_at >= ${startedAt}`;
   check('Sara got a notification', notes[0].n >= 1);
 
-  const esc = await escalateStep(steps[0].id);
-  const after = await sql`SELECT step_no, step_type, status FROM approval_steps WHERE request_id = ${requestId} ORDER BY step_no`;
-  check('Escalation: Manager step Escalated, HR step Pending', esc.escalated && after[0].status === 'Escalated' && after[1]?.step_type === 'HR' && after[1]?.status === 'Pending');
+  const early = await escalateStep(steps[0].id);
+  check('A timer that fires early does not escalate (due in 2 min)', early.escalated === false && early.retryInSeconds > 0, `retry in ${early.retryInSeconds} s`);
+  const esc = await escalateStep(steps[0].id, { ignoreDue: true });
+  const after = await sql`SELECT s.step_order, s.step, s.status FROM approval_steps s JOIN approval_tasks t ON t.id = s.task_id WHERE t.request_id = ${requestId} ORDER BY s.step_order`;
+  check('Escalation: Manager step Escalated, HR step Pending', esc.escalated && after[0].status === 'Escalated' && after[1]?.step === 'HR' && after[1]?.status === 'Pending');
 
-  const esc2 = await escalateStep(steps[0].id);
+  const esc2 = await escalateStep(steps[0].id, { ignoreDue: true });
   check('Escalating twice changes nothing', esc2.escalated === false);
 
   const c = await cancelWorkflow(requestId);
   const [t2] = await sql`SELECT status FROM approval_tasks WHERE request_id = ${requestId}`;
-  const open = await sql`SELECT count(*)::int AS n FROM approval_steps WHERE request_id = ${requestId} AND status = 'Pending'`;
+  const open = await sql`SELECT count(*)::int AS n FROM approval_steps s JOIN approval_tasks t ON t.id = s.task_id WHERE t.request_id = ${requestId} AND s.status = 'Pending'`;
   check('Cancellation closes the request and its open steps', c.changed && t2.status === 'Cancelled' && open[0].n === 0);
 } catch (err) {
   fail++; console.log('FAIL  unexpected error:', err.message);
 } finally {
   // Remove everything this test created.
   try {
-    await sql`DELETE FROM approval_steps WHERE request_id = ${requestId}`;
+    await sql`DELETE FROM approval_steps WHERE task_id IN (SELECT id FROM approval_tasks WHERE request_id = ${requestId})`;
     await sql`DELETE FROM approval_tasks WHERE request_id = ${requestId}`;
     await sql`DELETE FROM processed_events WHERE event_id = ${eventId}`;
     await sql`DELETE FROM notifications WHERE created_at >= ${startedAt} AND (link LIKE ${'%' + requestId + '%'} OR body LIKE ${'%' + (mona.name || '') + '%'})`;

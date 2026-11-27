@@ -27,16 +27,19 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(express.json({ limit: '10kb' }));
-// Floci 2.5.0 can hand the body to Lambda without streaming it into the request. If Express saw no body,
-// read it from the raw API Gateway event instead (same 10 KB limit, JSON only).
+// Behind API Gateway, serverless-http hands Express the body as raw bytes (a Buffer), so express.json()
+// skips it. Turn those bytes, or the raw API Gateway event body, into JSON here (same 10 KB limit).
 app.use((req, _res, next) => {
-  const raw = req.lambdaEvent?.body;
-  const empty = !req.body || (typeof req.body === 'object' && Object.keys(req.body).length === 0);
-  if (!['POST', 'PUT', 'PATCH'].includes(req.method) || !empty || !raw) return next();
+  if (!['POST', 'PUT', 'PATCH'].includes(req.method)) return next();
+  let text = null;
+  if (Buffer.isBuffer(req.body)) text = req.body.toString('utf8');
+  else if ((!req.body || Object.keys(req.body).length === 0) && req.lambdaEvent?.body) {
+    text = req.lambdaEvent.isBase64Encoded ? Buffer.from(req.lambdaEvent.body, 'base64').toString('utf8') : String(req.lambdaEvent.body);
+  }
+  if (text === null) return next();
+  if (text.length > 10 * 1024) return next(new HttpError(413, 'PAYLOAD_TOO_LARGE', 'Request body too large'));
   try {
-    const text = req.lambdaEvent.isBase64Encoded ? Buffer.from(raw, 'base64').toString('utf8') : String(raw);
-    if (text.length > 10 * 1024) return next(new HttpError(413, 'PAYLOAD_TOO_LARGE', 'Request body too large'));
-    req.body = text ? JSON.parse(text) : {};
+    req.body = text.trim() ? JSON.parse(text) : {};
     next();
   } catch {
     next(new HttpError(400, 'INVALID_JSON', 'Body is not valid JSON'));

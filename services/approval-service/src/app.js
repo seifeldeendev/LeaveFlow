@@ -27,6 +27,21 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(express.json({ limit: '10kb' }));
+// Floci 2.5.0 can hand the body to Lambda without streaming it into the request. If Express saw no body,
+// read it from the raw API Gateway event instead (same 10 KB limit, JSON only).
+app.use((req, _res, next) => {
+  const raw = req.lambdaEvent?.body;
+  const empty = !req.body || (typeof req.body === 'object' && Object.keys(req.body).length === 0);
+  if (!['POST', 'PUT', 'PATCH'].includes(req.method) || !empty || !raw) return next();
+  try {
+    const text = req.lambdaEvent.isBase64Encoded ? Buffer.from(raw, 'base64').toString('utf8') : String(raw);
+    if (text.length > 10 * 1024) return next(new HttpError(413, 'PAYLOAD_TOO_LARGE', 'Request body too large'));
+    req.body = text ? JSON.parse(text) : {};
+    next();
+  } catch {
+    next(new HttpError(400, 'INVALID_JSON', 'Body is not valid JSON'));
+  }
+});
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: cfg.service }));
 app.use('/approvals', approvalRoutes);

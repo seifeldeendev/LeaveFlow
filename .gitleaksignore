@@ -1,0 +1,3 @@
+# False positive: a deliberately invalid, made-up token used by the "forged token -> 401" security test.
+# It has no valid signature and grants no access. The test now builds it at runtime instead.
+4070653ce7a90c34d1f76228dca7da17cebe54da:services/approval-service/scripts/api-test.mjs:generic-api-key:87

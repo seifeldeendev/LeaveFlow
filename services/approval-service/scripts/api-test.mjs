@@ -84,7 +84,10 @@ console.log('Signed in: Mona, Omar (employees, Sales), Sara (manager, Sales), Ka
 
 console.log('-- Authentication and roles');
 check('No token -> 401', (await call('GET', '/approvals')).status, 401);
-check('Forged token -> 401', (await call('GET', '/approvals', { token: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.bad' })).status, 401);
+// A made-up token with no valid signature (built here so it never looks like a stored secret).
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+const forged = [b64({ alg: 'RS256' }), b64({ sub: 'attacker', 'cognito:groups': ['HRAdmin'] }), 'not-a-signature'].join('.');
+check('Forged token -> 401', (await call('GET', '/approvals', { token: forged })).status, 401);
 check('Employee opens the approvals queue -> 403', (await call('GET', '/approvals', mona)).status, 403);
 check('Employee opens the team calendar -> 403', (await call('GET', '/team-calendar', mona)).status, 403);
 check('Manager opens the queue -> 200', (await call('GET', '/approvals', sara)).status, 200);

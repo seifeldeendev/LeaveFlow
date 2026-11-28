@@ -69,40 +69,52 @@ Each diagram follows one role through the application. The highlighted step move
 
 ## Architecture
 
-Each service owns its data and runs on AWS-style serverless components. Services communicate through events on a shared bus, never through each other's databases.
+The backend is split into three independent services, each built and owned by one team member. Each service has its own API, Lambda function and database. Services communicate only through events on a shared bus, never through each other's databases.
 
 ```mermaid
-flowchart LR
-    UI[Static web frontend] -->|HTTPS + JWT| RA[requests-api]
-    UI -->|HTTPS + JWT| AA[approvals-api]
-    UI -->|HTTPS + JWT| BA[balances-api]
+flowchart TB
+    UI["Web frontend<br/>HTML · CSS · JavaScript"]
+    BUS(("EventBridge<br/>leaveflow-bus"))
+    COG["Cognito user pool<br/>sign-in · roles · MFA"]
 
-    RA --> RF[requests-fn]
-    AA --> AF[approvals-fn]
-    BA --> BF[balance-projection-fn]
+    subgraph REQ["Leave Request & Policy Engine<br/>Sohaila (@SohailaTaher)"]
+        direction TB
+        RA["requests-api"] --> RF["requests-fn"]
+        RF --> DB1[("Requests DB")]
+        RF --> S3[("S3 + KMS<br/>certificates")]
+    end
 
-    RF -->|request.submitted / cancelled| BUS((EventBridge<br/>leaveflow-bus))
-    AF -->|request.approved / rejected| BUS
-    BUS --> AF
-    BUS --> RF
-    BUS --> Q[SQS balances-inbox<br/>+ DLQ] --> BF
+    subgraph BAL["Balance & Accrual<br/>Seif (@seifeldeendev)"]
+        direction TB
+        BA["balances-api"] --> BF["balance-projection-fn"]
+        Q["SQS balances-inbox<br/>+ DLQ"] --> BF
+        BF --> DB3[("Balances DB")]
+    end
 
-    RF -. balance projection .-> BF
-    AF --> SF[Step Functions<br/>escalation timer]
+    subgraph APR["Approval Workflow<br/>Ammar (@3enany)"]
+        direction TB
+        AA["approvals-api"] --> AF["approvals-fn"]
+        AF --> DB2[("Approvals DB")]
+        AF --> SF["Step Functions<br/>escalation timer"]
+    end
 
-    RF --> DB1[(Requests DB)]
-    AF --> DB2[(Approvals DB)]
-    BF --> DB3[(Balances DB)]
+    COG -. "JWT" .-> UI
+    UI -->|HTTPS + JWT| RA
+    UI -->|HTTPS + JWT| BA
+    UI -->|HTTPS + JWT| AA
 
-    RF --> S3[(S3 + KMS<br/>certificates)]
-    COG[Cognito user pool] -.-> RF & AF & BF
+    BUS <-->|"request events"| RF
+    BUS <-->|"decision events"| AF
+    BUS -->|"leave events"| Q
 ```
 
-| Service | Responsibility | Lambda | API |
-|---|---|---|---|
-| **Leave Request & Policy Engine** | Sign-in, MFA, request lifecycle, policy rules, certificates | `requests-fn` | `requests-api` |
-| **Approval Workflow** | Approval routing, coverage rule, escalation, notifications, team calendar | `approvals-fn` | `approvals-api` |
-| **Balance & Accrual** | Ledger, holds, deductions, refunds, accruals, HR adjustments, audit log | `balance-projection-fn` | `balances-api` |
+| Service | Owner | Responsibility | Lambda | API | Database |
+|---|---|---|---|---|---|
+| **Leave Request & Policy Engine** | Sohaila ([@SohailaTaher](https://github.com/SohailaTaher)) | Sign-in, MFA, request lifecycle, policy rules, certificates | `requests-fn` | `requests-api` | Requests DB |
+| **Approval Workflow** | Ammar ([@3enany](https://github.com/3enany)) | Approval routing, coverage rule, escalation, notifications, team calendar | `approvals-fn` | `approvals-api` | Approvals DB |
+| **Balance & Accrual** | Seif ([@seifeldeendev](https://github.com/seifeldeendev)) | Ledger, holds, deductions, refunds, accruals, HR adjustments, audit log | `balance-projection-fn` | `balances-api` | Balances DB |
+
+The Leave Request service also calls `balances-api` directly to get a balance projection for a request.
 
 Event processing is **at-least-once**. Every consumer is idempotent, backed by database constraints on event and request identifiers, so a redelivered event never creates a second hold, deduction, refund or workflow.
 

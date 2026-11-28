@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "OwnLogsOnly", "Effect": "Allow",
+      "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:__REGION__:__ACCOUNT__:log-group:/aws/lambda/balance-projection-fn:*" },
+    { "Sid": "ReadOwnDatabaseSecret", "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:__REGION__:__ACCOUNT__:secret:leaveflow/balances-*" },
+    { "Sid": "ConsumeOwnInboxOnly", "Effect": "Allow",
+      "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"],
+      "Resource": [
+        "arn:aws:sqs:__REGION__:__ACCOUNT__:balances-inbox",
+        "arn:aws:sqs:__REGION__:__ACCOUNT__:audit-inbox"
+      ] },
+    { "Sid": "PublishAuditEventsOnly", "Effect": "Allow",
+      "Action": "events:PutEvents",
+      "Resource": "arn:aws:events:__REGION__:__ACCOUNT__:event-bus/leaveflow-bus" },
+    { "Sid": "ReadUsersForHrAndAccrualOnly", "Effect": "Allow",
+      "Action": ["cognito-idp:ListUsers", "cognito-idp:AdminGetUser"],
+      "Resource": "arn:aws:cognito-idp:__REGION__:__ACCOUNT__:userpool/__POOL_ID__" },
+    { "Sid": "ReadBalancePolicyParametersOnly", "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:__REGION__:__ACCOUNT__:parameter/leaveflow/balances/*" }
+  ]
+}

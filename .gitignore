@@ -11,3 +11,9 @@ __pycache__/
 .env
 .env.*
 *.zip
+
+# Generated frontend build (tools/build-frontend.mjs)
+dist/
+
+# Documentation and reports stay local (not committed)
+*.md

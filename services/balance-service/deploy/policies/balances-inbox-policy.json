@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowEventBridgeToSend",
+      "Effect": "Allow",
+      "Principal": { "Service": "events.amazonaws.com" },
+      "Action": "sqs:SendMessage",
+      "Resource": "__ARN__",
+      "Condition": {
+        "ArnEquals": { "aws:SourceArn": "arn:aws:events:__REGION__:__ACCOUNT__:rule/leaveflow-bus/*" }
+      }
+    }
+  ]
+}

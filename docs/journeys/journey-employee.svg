@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" role="img" aria-labelledby="t-employee d-employee">
+<title id="t-employee">LeaveFlow employee journey</title>
+<desc id="d-employee">1. Sign in: Email and password Cognito, 15-min session; 2. Overview: Available balance and upcoming leave; 3. New request: Live working-day count skips public holidays; 4. Policy check: Notice, blackout dates, overlap and balance; 5. Submitted: Days placed on hold, manager notified; 6. Track status: Timeline and alerts, withdraw while pending; 7. Decision: Approved: days deducted Rejected: hold released; 8. Cancel: Allowed before the start date: refunded</desc>
+<style>
+  .bg { fill: #001E2B; }
+  .title { font: 700 22px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #E8F1F2; }
+  .sub { font: 400 13.5px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #9DB3BB; }
+  .tag { font: 700 11px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #001E2B; letter-spacing: 1.2px; }
+  .h { font: 650 15px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #E8F1F2; }
+  .d { font: 400 12.5px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #9DB3BB; }
+  .num { font: 700 12px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #001E2B; }
+  .foot { font: 400 12px 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; fill: #9DB3BB; }
+  .card { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; }
+  .badge { fill: #1C4A5C; }
+  .tick { fill: none; stroke: #00ED64; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+  .link { stroke: #1C4A5C; stroke-width: 2; stroke-dasharray: 6 6; fill: none; animation: flow 1s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -12; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } .card { stroke: #00ED64; } }
+  @keyframes c0 { 0%, 0.00% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 0.01%, 6.57% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 8.96%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b0 { 0%, 0.00% { fill: #1C4A5C; } 0.01%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t0 { 0%, 6.57% { opacity: 0; } 8.96%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s0 .card { animation: c0 13.40s linear infinite; }
+  .s0 .badge { animation: b0 13.40s linear infinite; }
+  .s0 .tick { animation: t0 13.40s linear infinite; }
+  @keyframes c1 { 0%, 7.76% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 10.15%, 18.51% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 20.90%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b1 { 0%, 7.76% { fill: #1C4A5C; } 10.15%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t1 { 0%, 18.51% { opacity: 0; } 20.90%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s1 .card { animation: c1 13.40s linear infinite; }
+  .s1 .badge { animation: b1 13.40s linear infinite; }
+  .s1 .tick { animation: t1 13.40s linear infinite; }
+  @keyframes c2 { 0%, 19.70% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 22.09%, 30.45% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 32.84%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b2 { 0%, 19.70% { fill: #1C4A5C; } 22.09%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t2 { 0%, 30.45% { opacity: 0; } 32.84%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s2 .card { animation: c2 13.40s linear infinite; }
+  .s2 .badge { animation: b2 13.40s linear infinite; }
+  .s2 .tick { animation: t2 13.40s linear infinite; }
+  @keyframes c3 { 0%, 31.64% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 34.03%, 42.39% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 44.78%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b3 { 0%, 31.64% { fill: #1C4A5C; } 34.03%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t3 { 0%, 42.39% { opacity: 0; } 44.78%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s3 .card { animation: c3 13.40s linear infinite; }
+  .s3 .badge { animation: b3 13.40s linear infinite; }
+  .s3 .tick { animation: t3 13.40s linear infinite; }
+  @keyframes c4 { 0%, 43.58% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 45.97%, 54.33% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 56.72%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b4 { 0%, 43.58% { fill: #1C4A5C; } 45.97%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t4 { 0%, 54.33% { opacity: 0; } 56.72%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s4 .card { animation: c4 13.40s linear infinite; }
+  .s4 .badge { animation: b4 13.40s linear infinite; }
+  .s4 .tick { animation: t4 13.40s linear infinite; }
+  @keyframes c5 { 0%, 55.52% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 57.91%, 66.27% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 68.66%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b5 { 0%, 55.52% { fill: #1C4A5C; } 57.91%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t5 { 0%, 66.27% { opacity: 0; } 68.66%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s5 .card { animation: c5 13.40s linear infinite; }
+  .s5 .badge { animation: b5 13.40s linear infinite; }
+  .s5 .tick { animation: t5 13.40s linear infinite; }
+  @keyframes c6 { 0%, 67.46% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 69.85%, 78.21% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 80.60%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b6 { 0%, 67.46% { fill: #1C4A5C; } 69.85%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t6 { 0%, 78.21% { opacity: 0; } 80.60%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s6 .card { animation: c6 13.40s linear infinite; }
+  .s6 .badge { animation: b6 13.40s linear infinite; }
+  .s6 .tick { animation: t6 13.40s linear infinite; }
+  @keyframes c7 { 0%, 79.40% { fill: #0A2A38; stroke: #1C4A5C; stroke-width: 1.5; } 81.79%, 99.00% { fill: #0F3A4C; stroke: #00ED64; stroke-width: 2.5; } 99.50%, 99.6% { fill: #0A2A38; stroke: #00ED64; stroke-opacity: .55; stroke-width: 1.5; } 100% { fill: #0A2A38; stroke: #1C4A5C; } }
+  @keyframes b7 { 0%, 79.40% { fill: #1C4A5C; } 81.79%, 99.6% { fill: #00ED64; } 100% { fill: #1C4A5C; } }
+  @keyframes t7 { 0%, 99.00% { opacity: 0; } 99.50%, 99.6% { opacity: 1; } 100% { opacity: 0; } }
+  .s7 .card { animation: c7 13.40s linear infinite; }
+  .s7 .badge { animation: b7 13.40s linear infinite; }
+  .s7 .tick { animation: t7 13.40s linear infinite; }
+</style>
+<defs>
+<marker id="ar-employee" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1C4A5C"/></marker>
+<radialGradient id="glow-employee"><stop offset="0" stop-color="#00ED64" stop-opacity=".9"/><stop offset="1" stop-color="#00ED64" stop-opacity="0"/></radialGradient>
+</defs>
+<rect class="bg" x="0" y="0" width="960" height="400" rx="18"/>
+<rect x="30" y="26" width="75" height="22" rx="11" fill="#00ED64"/>
+<text class="tag" x="67" y="41.5" text-anchor="middle">EMPLOYEE</text>
+<text class="title" x="119" y="45">Employee journey</text>
+<text class="sub" x="30" y="76">From signing in to taking leave: every step is checked by the backend.</text>
+<line class="link" x1="230.0" y1="152" x2="262.0" y2="152" marker-end="url(#ar-employee)"/>
+<line class="link" x1="470.0" y1="152" x2="502.0" y2="152" marker-end="url(#ar-employee)"/>
+<line class="link" x1="710.0" y1="152" x2="742.0" y2="152" marker-end="url(#ar-employee)"/>
+<line class="link" x1="848" y1="202.0" x2="848" y2="238.0" marker-end="url(#ar-employee)"/>
+<line class="link" x1="746.0" y1="292" x2="714.0" y2="292" marker-end="url(#ar-employee)"/>
+<line class="link" x1="506.0" y1="292" x2="474.0" y2="292" marker-end="url(#ar-employee)"/>
+<line class="link" x1="266.0" y1="292" x2="234.0" y2="292" marker-end="url(#ar-employee)"/>
+<g>
+<circle r="16" fill="url(#glow-employee)"/><circle r="6" fill="#00ED64"/>
+<animateMotion dur="13.40s" repeatCount="indefinite" calcMode="linear" path="M128,152 L368,152 L608,152 L848,152 L848,292 L608,292 L368,292 L128,292" keyPoints="0.0000;0.1519;0.3038;0.4557;0.5443;0.6962;0.8481;1.0000;1" keyTimes="0.0000;0.1194;0.2388;0.3582;0.4776;0.5970;0.7164;0.8358;1"/>
+</g>
+<g class="s0">
+<rect class="card" x="30.0" y="106.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="54.0" cy="131.0" r="12"/>
+<text class="num" x="54.0" y="135.5" text-anchor="middle">1</text>
+<text class="h" x="74.0" y="136.0">Sign in</text>
+<path class="tick" d="M198.0,131.0 l4,4 l8,-9"/>
+<text class="d" x="46.0" y="163.0">Email and password</text>
+<text class="d" x="46.0" y="181.0">Cognito, 15-min session</text>
+</g>
+<g class="s1">
+<rect class="card" x="270.0" y="106.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="294.0" cy="131.0" r="12"/>
+<text class="num" x="294.0" y="135.5" text-anchor="middle">2</text>
+<text class="h" x="314.0" y="136.0">Overview</text>
+<path class="tick" d="M438.0,131.0 l4,4 l8,-9"/>
+<text class="d" x="286.0" y="163.0">Available balance</text>
+<text class="d" x="286.0" y="181.0">and upcoming leave</text>
+</g>
+<g class="s2">
+<rect class="card" x="510.0" y="106.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="534.0" cy="131.0" r="12"/>
+<text class="num" x="534.0" y="135.5" text-anchor="middle">3</text>
+<text class="h" x="554.0" y="136.0">New request</text>
+<path class="tick" d="M678.0,131.0 l4,4 l8,-9"/>
+<text class="d" x="526.0" y="163.0">Live working-day count</text>
+<text class="d" x="526.0" y="181.0">skips public holidays</text>
+</g>
+<g class="s3">
+<rect class="card" x="750.0" y="106.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="774.0" cy="131.0" r="12"/>
+<text class="num" x="774.0" y="135.5" text-anchor="middle">4</text>
+<text class="h" x="794.0" y="136.0">Policy check</text>
+<path class="tick" d="M918.0,131.0 l4,4 l8,-9"/>
+<text class="d" x="766.0" y="163.0">Notice, blackout dates,</text>
+<text class="d" x="766.0" y="181.0">overlap and balance</text>
+</g>
+<g class="s4">
+<rect class="card" x="750.0" y="246.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="774.0" cy="271.0" r="12"/>
+<text class="num" x="774.0" y="275.5" text-anchor="middle">5</text>
+<text class="h" x="794.0" y="276.0">Submitted</text>
+<path class="tick" d="M918.0,271.0 l4,4 l8,-9"/>
+<text class="d" x="766.0" y="303.0">Days placed on hold,</text>
+<text class="d" x="766.0" y="321.0">manager notified</text>
+</g>
+<g class="s5">
+<rect class="card" x="510.0" y="246.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="534.0" cy="271.0" r="12"/>
+<text class="num" x="534.0" y="275.5" text-anchor="middle">6</text>
+<text class="h" x="554.0" y="276.0">Track status</text>
+<path class="tick" d="M678.0,271.0 l4,4 l8,-9"/>
+<text class="d" x="526.0" y="303.0">Timeline and alerts,</text>
+<text class="d" x="526.0" y="321.0">withdraw while pending</text>
+</g>
+<g class="s6">
+<rect class="card" x="270.0" y="246.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="294.0" cy="271.0" r="12"/>
+<text class="num" x="294.0" y="275.5" text-anchor="middle">7</text>
+<text class="h" x="314.0" y="276.0">Decision</text>
+<path class="tick" d="M438.0,271.0 l4,4 l8,-9"/>
+<text class="d" x="286.0" y="303.0">Approved: days deducted</text>
+<text class="d" x="286.0" y="321.0">Rejected: hold released</text>
+</g>
+<g class="s7">
+<rect class="card" x="30.0" y="246.0" width="196" height="92" rx="14"/>
+<circle class="badge" cx="54.0" cy="271.0" r="12"/>
+<text class="num" x="54.0" y="275.5" text-anchor="middle">8</text>
+<text class="h" x="74.0" y="276.0">Cancel</text>
+<path class="tick" d="M198.0,271.0 l4,4 l8,-9"/>
+<text class="d" x="46.0" y="303.0">Allowed before the</text>
+<text class="d" x="46.0" y="321.0">start date: refunded</text>
+</g>
+<text class="foot" x="480.0" y="378" text-anchor="middle">Roles and rules are enforced by the services, not by the browser.</text>
+</svg>

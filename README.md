@@ -14,6 +14,7 @@ Employees request leave with instant policy checks. Managers approve with team-c
 ## Table of contents
 
 - [Features](#features)
+- [User journeys](#user-journeys)
 - [Architecture](#architecture)
 - [Tech stack](#tech-stack)
 - [Repository structure](#repository-structure)
@@ -45,6 +46,24 @@ Employees request leave with instant policy checks. Managers approve with team-c
 - See all employee balances, with bounded and audited adjustments.
 - Run monthly accruals, the casual-leave grant and the year-end carry-over and expiry.
 - Export balances to CSV.
+
+---
+
+## User journeys
+
+Each diagram follows one role through the application. The highlighted step moves along the path, and completed steps are ticked.
+
+### Employee
+
+<p align="center"><img src="docs/journeys/journey-employee.svg" alt="Employee journey: sign in, overview, new request, policy check, submitted, track status, decision, cancel" width="100%"></p>
+
+### Manager
+
+<p align="center"><img src="docs/journeys/journey-manager.svg" alt="Manager journey: sign in, approval queue, review, coverage check, decide, route to HR, escalation, history" width="100%"></p>
+
+### HR administrator
+
+<p align="center"><img src="docs/journeys/journey-hr.svg" alt="HR administrator journey: sign in, HR queue, final decision, all balances, ledger, adjustment, accrual run, year end" width="100%"></p>
 
 ---
 
@@ -129,6 +148,7 @@ LeaveFlow/
 │       ├── db/                Schema, migrations, least-privilege grants
 │       ├── deploy/            Deployment script and IAM policies
 │       └── tests/             Unit and isolated integration tests
+├── docs/journeys/             Animated user-journey diagrams
 └── tools/                     Page generator for the HTML wrappers
 ```
 
